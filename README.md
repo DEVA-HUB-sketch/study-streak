@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Study Streak
 
-## Getting Started
+Study Streak is a web application that helps students build consistent study habits by tracking daily study sessions, maintaining streaks, and visualizing learning progress.
 
-First, run the development server:
+## Problem
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Many students struggle to maintain a consistent study routine. Study Streak encourages regular learning through streak tracking and progress monitoring.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- User registration and login
+- Daily study check-in
+- Current study streak tracking
+- Longest streak record
+- Progress dashboard
+- Study history tracking
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Core Screens
 
-## Learn More
+### Home Page
+- Project introduction
+- Login/Register buttons
 
-To learn more about Next.js, take a look at the following resources:
+### Login Page
+- User authentication
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Register Page
+- New account creation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Dashboard
+- Current streak
+- Longest streak
+- Progress summary
 
-## Deploy on Vercel
+### Streak Page
+- Daily study check-in
+- Streak statistics
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js
+- TypeScript
+- Tailwind CSS
+- Firebase Authentication
+- Firestore Database
+
+## Status
+
+Day 1 Scaffold Completed
