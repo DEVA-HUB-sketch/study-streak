@@ -33,8 +33,12 @@ export default function Home() {
     setFetching(true);
     try {
       const res = await fetch("/api/sessions");
-      const data = await res.json();
-      setSessions(data);
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      const data: unknown = await res.json();
+      setSessions(Array.isArray(data) ? (data as StudySession[]) : []);
+    } catch (err) {
+      console.error("fetchSessions:", err);
+      setSessions([]);
     } finally {
       setFetching(false);
     }

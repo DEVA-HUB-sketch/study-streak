@@ -6,7 +6,8 @@ export async function GET() {
     await connectDB();
     const sessions = await StudySession.find().sort({ date: -1 });
     return Response.json(sessions);
-  } catch {
+  } catch (err) {
+    console.error("[GET /api/sessions]", err);
     return Response.json(
       { error: "Failed to fetch sessions" },
       { status: 500 }
