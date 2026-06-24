@@ -5,10 +5,14 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Trophy, Medal, Target, BarChart2,
-  User, Settings, X, Gem, Flame, ChevronRight, LogOut,
+  User, Settings, X, Gem, Flame, ChevronRight, LogOut, Bot,
 } from "lucide-react";
-import KnowledgeBrain from "@/components/brain/KnowledgeBrain";
-import FloatingKnowledge from "@/components/brain/FloatingKnowledge";
+import dynamic from "next/dynamic";
+
+// SSR disabled — these components use Math.sin() to compute SVG path data,
+// which produces different floating-point results on Node.js vs the browser.
+const KnowledgeBrain   = dynamic(() => import("@/components/brain/KnowledgeBrain"),   { ssr: false });
+const FloatingKnowledge = dynamic(() => import("@/components/brain/FloatingKnowledge"), { ssr: false });
 
 interface AuthUser { _id: string; name: string; email: string; }
 
@@ -33,10 +37,11 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label:"Insights",
+    label:"AI & Insights",
     items:[
-      { href:"/subjects",    label:"Analytics",    icon:<BarChart2 size={16}/> },
-      { href:"/dashboard",   label:"Challenges",   icon:<Target size={16}/> },
+      { href:"/ai",          label:"AI Study Coach", icon:<Bot size={16}/> },
+      { href:"/subjects",    label:"Analytics",      icon:<BarChart2 size={16}/> },
+      { href:"/dashboard",   label:"Challenges",     icon:<Target size={16}/> },
     ],
   },
   {
@@ -107,11 +112,18 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
             <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
               {section.items.map(item => {
                 const active = path === item.href;
+                const isAI   = item.href === "/ai";
                 return (
                   <Link key={item.href+item.label} href={item.href} onClick={onClose}
                     className={`nav-item ${active ? "active" : ""}`}>
                     {item.icon}
                     <span style={{ flex:1 }}>{item.label}</span>
+                    {isAI && !active && (
+                      <span style={{ fontSize:"0.5625rem", fontWeight:700, padding:"2px 6px", borderRadius:99,
+                        background:"rgba(155,93,229,0.2)", color:"#9B5DE5", border:"1px solid rgba(155,93,229,0.3)" }}>
+                        NEW
+                      </span>
+                    )}
                     {active && <ChevronRight size={13} style={{ color:"rgba(230,57,70,0.7)" }} />}
                   </Link>
                 );

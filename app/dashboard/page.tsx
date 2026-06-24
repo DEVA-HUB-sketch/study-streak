@@ -11,6 +11,7 @@ import StudyChart from "@/components/charts/StudyChart";
 import BrainCelebration from "@/components/brain/BrainCelebration";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import InsightsPanel from "@/components/insights/InsightsPanel";
+import PinnedTimetableWidget, { type PinnedPlan } from "@/components/dashboard/PinnedTimetableWidget";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface AuthUser { _id:string; name:string; email:string; }
@@ -31,7 +32,7 @@ const EMPTY_STATS: Stats = {
   chart:{ labels:[], data:[] }, subjectBreakdown:{},
 };
 
-const DAILY_GOAL = 120; // minutes
+const DAILY_GOAL = 120;
 
 export default function DashboardPage() {
   const [loading,         setLoading]         = useState(true);
@@ -43,9 +44,9 @@ export default function DashboardPage() {
   const [editingSession,  setEditingSession]  = useState<StudySession|null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [studyActive,     setStudyActive]     = useState(false);
+  const [pinnedPlan,      setPinnedPlan]      = useState<PinnedPlan | null>(null);
   const prevCelebrated = useRef(false);
 
-  // Today's minutes → brain progress
   const todayMinutes = sessions.filter(s => {
     const d = new Date(s.date); const t = new Date();
     return d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth() && d.getDate()===t.getDate();
@@ -59,21 +60,22 @@ export default function DashboardPage() {
   const fetchStats       = useCallback(async()=>{ const r=await fetch("/api/stats");    if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setStats(d as Stats); },[]);
   const fetchChallenge   = useCallback(async()=>{ const r=await fetch("/api/challenges");if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setChallenge(d as Challenge); },[]);
   const fetchLeaderboard = useCallback(async()=>{ const r=await fetch("/api/leaderboard");if(!r.ok) return; const d:unknown=await r.json(); if(Array.isArray(d)) setLeaderboard(d as LeaderboardEntry[]); },[]);
+  const fetchPinnedPlan  = useCallback(async()=>{
+    const r = await fetch("/api/timetable");
+    if (!r.ok) return;
+    const d: PinnedPlan | null = await r.json();
+    setPinnedPlan(d);
+  },[]);
 
   const refreshAll = useCallback(async()=>{
     await Promise.all([fetchSessions(),fetchStats(),fetchChallenge(),fetchLeaderboard()]);
   },[fetchSessions,fetchStats,fetchChallenge,fetchLeaderboard]);
 
-  useEffect(()=>{ fetchUser(); },[fetchUser]);
-
+  useEffect(()=>{ fetchUser(); fetchPinnedPlan(); },[fetchUser,fetchPinnedPlan]);
   useEffect(()=>{ refreshAll(); },[refreshAll]);
 
-  // Trigger celebration at 100%
   useEffect(()=>{
-    if(brainProgress>=100 && !prevCelebrated.current){
-      prevCelebrated.current=true;
-      setTimeout(()=>setShowCelebration(true),600);
-    }
+    if(brainProgress>=100 && !prevCelebrated.current){ prevCelebrated.current=true; setTimeout(()=>setShowCelebration(true),600); }
     if(brainProgress<100) prevCelebrated.current=false;
   },[brainProgress]);
 
@@ -120,6 +122,14 @@ export default function DashboardPage() {
               brainProgress={brainProgress}
               totalRubies={stats.totalRubies}
             />
+
+            {/* Pinned AI study plan (if any) */}
+            {pinnedPlan && (
+              <PinnedTimetableWidget
+                plan={pinnedPlan}
+                onRemoved={()=>setPinnedPlan(null)}
+              />
+            )}
 
             {/* Stats grid */}
             <StatsGrid stats={stats} />

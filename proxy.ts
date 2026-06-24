@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, COOKIE_NAME } from "@/lib/auth";
 
-const PROTECTED = ["/dashboard", "/leaderboard", "/achievements", "/profile", "/subjects"];
+const PROTECTED = ["/dashboard", "/leaderboard", "/achievements", "/profile", "/subjects", "/ai"];
 const AUTH_ONLY = ["/login", "/signup"];
 
 export function proxy(request: NextRequest) {
@@ -31,6 +31,7 @@ export const config = {
     "/achievements/:path*",
     "/profile/:path*",
     "/subjects/:path*",
+    "/ai/:path*",
     "/login",
     "/signup",
   ],

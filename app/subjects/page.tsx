@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Plus, Pencil, Trash2, Clock } from "lucide-react";
-import toast from "react-hot-toast";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface Subject { _id: string; name: string; color: string; icon: string; totalMinutes: number; sessionCount: number; }
 
@@ -13,16 +13,17 @@ const PRESET_COLORS = ["#E63946","#4895EF","#52B788","#D4A373","#9B5DE5","#F4A26
 const PRESET_ICONS  = ["📚","🔬","🧮","🎨","💻","🏛","🎵","📖","⚗","🌍"];
 
 export default function SubjectsPage() {
-  const [subjects,  setSubjects]  = useState<Subject[]>([]);
-  const [rubies,    setRubies]    = useState(0);
-  const [showForm,  setShowForm]  = useState(false);
-  const [editing,   setEditing]   = useState<Subject | null>(null);
-  const [form,      setForm]      = useState({ name: "", color: PRESET_COLORS[0], icon: PRESET_ICONS[0] });
+  const { user }                          = useCurrentUser();
+  const [subjects,  setSubjects]          = useState<Subject[]>([]);
+  const [totalRubies, setTotalRubies]     = useState(0);
+  const [showForm,  setShowForm]          = useState(false);
+  const [editing,   setEditing]           = useState<Subject | null>(null);
+  const [form,      setForm]              = useState({ name: "", color: PRESET_COLORS[0], icon: PRESET_ICONS[0] });
 
   async function load() {
     const [sr, rr] = await Promise.all([fetch("/api/subjects"), fetch("/api/stats")]);
     const s = await sr.json(); if (Array.isArray(s)) setSubjects(s);
-    const r = await rr.json(); if (r?.totalRubies) setRubies(r.totalRubies);
+    const r = await rr.json(); if (r?.totalRubies) setTotalRubies(r.totalRubies);
   }
 
   useEffect(() => { load(); }, []);
@@ -33,13 +34,14 @@ export default function SubjectsPage() {
     const method = editing ? "PUT" : "POST";
     const res    = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     if (res.ok) { toast.success(editing ? "Subject updated!" : "Subject created!"); reset(); load(); }
-    else          toast.error("Failed to save subject.");
+    else         toast.error("Failed to save subject.");
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this subject?")) return;
     const res = await fetch(`/api/subjects/${id}`, { method: "DELETE" });
     if (res.ok) { toast.success("Subject deleted."); load(); }
+    else         toast.error("Failed to delete subject.");
   }
 
   function startEdit(s: Subject) {
@@ -50,11 +52,11 @@ export default function SubjectsPage() {
     setEditing(null); setForm({ name: "", color: PRESET_COLORS[0], icon: PRESET_ICONS[0] }); setShowForm(false);
   }
 
-  const inputCls = "w-full rounded-xl px-3 py-2.5 text-sm border focus:outline-none transition-all";
+  const inputCls   = "w-full rounded-xl px-3 py-2.5 text-sm border focus:outline-none transition-all";
   const inputStyle = { background: "rgba(255,255,255,0.7)", borderColor: "rgba(212,163,115,0.3)", color: "var(--dark)" };
 
   return (
-    <DashboardLayout totalRubies={rubies}>
+    <DashboardLayout user={user} totalRubies={totalRubies}>
       <Toaster position="top-right" />
       <div className="p-5 max-w-4xl mx-auto">
         {/* Header */}
@@ -99,13 +101,11 @@ export default function SubjectsPage() {
                   style={inputStyle}
                 />
 
-                {/* Icon picker */}
                 <div>
                   <label className="text-xs font-medium mb-2 block" style={{ color: "var(--dark-soft)", opacity: 0.7 }}>Icon</label>
                   <div className="flex flex-wrap gap-2">
                     {PRESET_ICONS.map((ic) => (
-                      <button
-                        key={ic} type="button"
+                      <button key={ic} type="button"
                         onClick={() => setForm((f) => ({ ...f, icon: ic }))}
                         className="w-9 h-9 rounded-xl text-lg transition-all"
                         style={{ background: form.icon === ic ? "rgba(230,57,70,0.15)" : "rgba(0,0,0,0.05)", border: form.icon === ic ? "2px solid var(--ruby)" : "2px solid transparent" }}
@@ -114,13 +114,11 @@ export default function SubjectsPage() {
                   </div>
                 </div>
 
-                {/* Color picker */}
                 <div>
                   <label className="text-xs font-medium mb-2 block" style={{ color: "var(--dark-soft)", opacity: 0.7 }}>Color</label>
                   <div className="flex flex-wrap gap-2">
                     {PRESET_COLORS.map((c) => (
-                      <button
-                        key={c} type="button"
+                      <button key={c} type="button"
                         onClick={() => setForm((f) => ({ ...f, color: c }))}
                         className="w-7 h-7 rounded-full transition-all"
                         style={{ background: c, border: form.color === c ? "3px solid var(--dark)" : "3px solid transparent", transform: form.color === c ? "scale(1.2)" : "scale(1)" }}
@@ -130,10 +128,12 @@ export default function SubjectsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: "linear-gradient(135deg, var(--ruby), var(--ruby-dark))" }}>
+                  <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
+                    style={{ background: "linear-gradient(135deg, var(--ruby), var(--ruby-dark))" }}>
                     {editing ? "Update" : "Create"}
                   </button>
-                  <button type="button" onClick={reset} className="px-4 py-2.5 rounded-xl text-sm border" style={{ borderColor: "rgba(45,45,45,0.15)", color: "var(--dark-soft)" }}>
+                  <button type="button" onClick={reset} className="px-4 py-2.5 rounded-xl text-sm border"
+                    style={{ borderColor: "rgba(45,45,45,0.15)", color: "var(--dark-soft)" }}>
                     Cancel
                   </button>
                 </div>
@@ -152,21 +152,16 @@ export default function SubjectsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <AnimatePresence>
               {subjects.map((s, i) => (
-                <motion.div
-                  key={s._id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: i * 0.05 }}
+                <motion.div key={s._id}
+                  initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }} transition={{ delay: i * 0.05 }}
                   whileHover={{ y: -3 }}
                   className="glass rounded-2xl p-5 group"
                   style={{ borderTop: `3px solid ${s.color}` }}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                      style={{ background: `${s.color}20` }}
-                    >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                      style={{ background: `${s.color}20` }}>
                       {s.icon}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -179,11 +174,8 @@ export default function SubjectsPage() {
                     <span className="flex items-center gap-1"><Clock size={10} /> {s.totalMinutes} min</span>
                     <span className="flex items-center gap-1"><BookOpen size={10} /> {s.sessionCount} sessions</span>
                   </div>
-
-                  {/* Progress bar */}
                   <div className="mt-3 h-1.5 rounded-full bg-black/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
+                    <div className="h-full rounded-full transition-all"
                       style={{ background: s.color, width: `${Math.min((s.totalMinutes / 600) * 100, 100)}%` }}
                     />
                   </div>

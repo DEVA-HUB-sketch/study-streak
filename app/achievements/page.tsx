@@ -5,20 +5,22 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import AchievementGrid from "@/components/achievements/AchievementGrid";
 import { motion } from "framer-motion";
 import { Medal } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export default function AchievementsPage() {
-  const [unlockedIds, setUnlocked] = useState<string[]>([]);
-  const [rubies,      setRubies]   = useState(0);
+  const { user }                              = useCurrentUser();
+  const [unlockedIds, setUnlocked]            = useState<string[]>([]);
+  const [totalRubies, setTotalRubies]         = useState(0);
 
   useEffect(() => {
     fetch("/api/stats").then((r) => r.json()).then((d) => {
       if (d?.unlockedBadgeIds) setUnlocked(d.unlockedBadgeIds);
-      if (d?.totalRubies)      setRubies(d.totalRubies);
+      if (d?.totalRubies)      setTotalRubies(d.totalRubies);
     });
   }, []);
 
   return (
-    <DashboardLayout totalRubies={rubies}>
+    <DashboardLayout user={user} totalRubies={totalRubies}>
       <div className="p-5 max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <div className="flex items-center gap-3 mb-1">
