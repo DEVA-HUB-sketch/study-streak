@@ -12,6 +12,9 @@ import BrainCelebration from "@/components/brain/BrainCelebration";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import InsightsPanel from "@/components/insights/InsightsPanel";
 import PinnedTimetableWidget, { type PinnedPlan } from "@/components/dashboard/PinnedTimetableWidget";
+import AIInsightCard from "@/components/dashboard/AIInsightCard";
+import AnalyticsWidgets from "@/components/dashboard/AnalyticsWidgets";
+import type { Analytics } from "@/app/api/analytics/route";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface AuthUser { _id:string; name:string; email:string; }
@@ -45,6 +48,7 @@ export default function DashboardPage() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [studyActive,     setStudyActive]     = useState(false);
   const [pinnedPlan,      setPinnedPlan]      = useState<PinnedPlan | null>(null);
+  const [analytics,       setAnalytics]       = useState<Analytics | null>(null);
   const prevCelebrated = useRef(false);
 
   const todayMinutes = sessions.filter(s => {
@@ -55,11 +59,12 @@ export default function DashboardPage() {
   const brainProgress = Math.min(Math.round((todayMinutes/DAILY_GOAL)*100),100);
 
   /* ── Fetchers ─────────────────────────────────────────────── */
-  const fetchUser        = useCallback(async()=>{ const r=await fetch("/api/auth/me"); if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setAuthUser(d as AuthUser); },[]);
-  const fetchSessions    = useCallback(async()=>{ const r=await fetch("/api/sessions"); if(!r.ok) return; const d:unknown=await r.json(); setSessions(Array.isArray(d)?d as StudySession[]:[]);  },[]);
-  const fetchStats       = useCallback(async()=>{ const r=await fetch("/api/stats");    if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setStats(d as Stats); },[]);
-  const fetchChallenge   = useCallback(async()=>{ const r=await fetch("/api/challenges");if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setChallenge(d as Challenge); },[]);
-  const fetchLeaderboard = useCallback(async()=>{ const r=await fetch("/api/leaderboard");if(!r.ok) return; const d:unknown=await r.json(); if(Array.isArray(d)) setLeaderboard(d as LeaderboardEntry[]); },[]);
+  const fetchUser        = useCallback(async()=>{ const r=await fetch("/api/auth/me");     if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setAuthUser(d as AuthUser); },[]);
+  const fetchSessions    = useCallback(async()=>{ const r=await fetch("/api/sessions");    if(!r.ok) return; const d:unknown=await r.json(); setSessions(Array.isArray(d)?d as StudySession[]:[]);  },[]);
+  const fetchStats       = useCallback(async()=>{ const r=await fetch("/api/stats");       if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setStats(d as Stats); },[]);
+  const fetchChallenge   = useCallback(async()=>{ const r=await fetch("/api/challenges");  if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setChallenge(d as Challenge); },[]);
+  const fetchLeaderboard = useCallback(async()=>{ const r=await fetch("/api/leaderboard"); if(!r.ok) return; const d:unknown=await r.json(); if(Array.isArray(d)) setLeaderboard(d as LeaderboardEntry[]); },[]);
+
   const fetchPinnedPlan  = useCallback(async()=>{
     const r = await fetch("/api/timetable");
     if (!r.ok) return;
@@ -67,11 +72,18 @@ export default function DashboardPage() {
     setPinnedPlan(d);
   },[]);
 
-  const refreshAll = useCallback(async()=>{
-    await Promise.all([fetchSessions(),fetchStats(),fetchChallenge(),fetchLeaderboard()]);
-  },[fetchSessions,fetchStats,fetchChallenge,fetchLeaderboard]);
+  const fetchAnalytics   = useCallback(async()=>{
+    const r = await fetch("/api/analytics");
+    if (!r.ok) return;
+    const d: Analytics | null = await r.json();
+    if (d && !("error" in d)) setAnalytics(d);
+  },[]);
 
-  useEffect(()=>{ fetchUser(); fetchPinnedPlan(); },[fetchUser,fetchPinnedPlan]);
+  const refreshAll = useCallback(async()=>{
+    await Promise.all([fetchSessions(), fetchStats(), fetchChallenge(), fetchLeaderboard(), fetchAnalytics()]);
+  },[fetchSessions, fetchStats, fetchChallenge, fetchLeaderboard, fetchAnalytics]);
+
+  useEffect(()=>{ fetchUser(); fetchPinnedPlan(); },[fetchUser, fetchPinnedPlan]);
   useEffect(()=>{ refreshAll(); },[refreshAll]);
 
   useEffect(()=>{
@@ -123,16 +135,21 @@ export default function DashboardPage() {
               totalRubies={stats.totalRubies}
             />
 
+            {/* Today's AI Insight — data-driven, rule-based */}
+            {analytics && <AIInsightCard analytics={analytics} />}
+
             {/* Pinned AI study plan (if any) */}
             {pinnedPlan && (
-              <PinnedTimetableWidget
-                plan={pinnedPlan}
-                onRemoved={()=>setPinnedPlan(null)}
-              />
+              <PinnedTimetableWidget plan={pinnedPlan} onRemoved={()=>setPinnedPlan(null)}/>
             )}
 
             {/* Stats grid */}
             <StatsGrid stats={stats} />
+
+            {/* Analytics widgets — Most Studied, Weakest, Readiness */}
+            {analytics && analytics.totalSessions > 0 && (
+              <AnalyticsWidgets analytics={analytics} pinnedPlan={pinnedPlan}/>
+            )}
 
             {/* Charts */}
             <StudyChart

@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Trophy, Medal, Target, BarChart2,
-  User, Settings, X, Gem, Flame, ChevronRight, LogOut, Bot,
+  User, Settings, X, Gem, Flame, ChevronRight, LogOut, Bot, Library,
+  Activity, GraduationCap,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -31,7 +32,7 @@ const NAV_SECTIONS = [
   {
     items: [
       { href:"/dashboard",   label:"Dashboard",    icon:<LayoutDashboard size={16}/> },
-      { href:"/subjects",    label:"Sessions",     icon:<BookOpen size={16}/> },
+      { href:"/sessions",    label:"Sessions",     icon:<BookOpen size={16}/> },
       { href:"/leaderboard", label:"Leaderboard",  icon:<Trophy size={16}/> },
       { href:"/achievements",label:"Achievements", icon:<Medal size={16}/> },
     ],
@@ -39,9 +40,11 @@ const NAV_SECTIONS = [
   {
     label:"AI & Insights",
     items:[
-      { href:"/ai",          label:"AI Study Coach", icon:<Bot size={16}/> },
-      { href:"/subjects",    label:"Analytics",      icon:<BarChart2 size={16}/> },
-      { href:"/dashboard",   label:"Challenges",     icon:<Target size={16}/> },
+      { href:"/ai",          label:"AI Study Coach",      icon:<Bot           size={16}/> },
+      { href:"/resources",   label:"Learning Resources",  icon:<Library       size={16}/> },
+      { href:"/progress",    label:"Study Heatmap",       icon:<Activity      size={16}/> },
+      { href:"/exams",       label:"Exam Performance",    icon:<GraduationCap size={16}/> },
+      { href:"/challenges",  label:"Test Generator",      icon:<Target        size={16}/> },
     ],
   },
   {
@@ -112,7 +115,7 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
             <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
               {section.items.map(item => {
                 const active = path === item.href;
-                const isAI   = item.href === "/ai";
+                const isAI   = item.href === "/ai" || item.href === "/resources";
                 return (
                   <Link key={item.href+item.label} href={item.href} onClick={onClose}
                     className={`nav-item ${active ? "active" : ""}`}>

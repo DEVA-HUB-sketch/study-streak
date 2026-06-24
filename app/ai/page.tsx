@@ -6,6 +6,7 @@ import {
   Bot, Sparkles, BookOpen, Target, Clock, Trophy,
   ChevronDown, ChevronUp, Zap, Calendar, Brain, Star,
   Pin, PinOff, Send, MessageCircle, X, User,
+  AlertTriangle, TrendingUp, BarChart2, Lightbulb, CheckCircle,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -437,6 +438,69 @@ export default function AICoachPage() {
                   ))}
                 </div>
               </Section>
+
+              {/* ── Performance Analysis (data-driven) ──────── */}
+              {(result.weakSubjectAnalysis || result.strengthAnalysis || result.burnoutStatus) && (
+                <Section title="AI Performance Analysis" icon={<BarChart2 size={14} color="#4895EF"/>}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+
+                    {result.weakSubjectAnalysis && (
+                      <div style={{ padding:"12px 14px", borderRadius:12, background:"rgba(230,57,70,0.07)", borderLeft:"3px solid #E63946" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7 }}>
+                          <AlertTriangle size={13} color="#E63946"/>
+                          <span style={{ fontSize:"0.6875rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"#E63946" }}>Weak Subject Analysis</span>
+                        </div>
+                        <p style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.82)", lineHeight:1.65 }}>{result.weakSubjectAnalysis}</p>
+                      </div>
+                    )}
+
+                    {result.strengthAnalysis && (
+                      <div style={{ padding:"12px 14px", borderRadius:12, background:"rgba(82,183,136,0.07)", borderLeft:"3px solid #52B788" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7 }}>
+                          <TrendingUp size={13} color="#52B788"/>
+                          <span style={{ fontSize:"0.6875rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"#52B788" }}>Strength Analysis</span>
+                        </div>
+                        <p style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.82)", lineHeight:1.65 }}>{result.strengthAnalysis}</p>
+                      </div>
+                    )}
+
+                    {result.burnoutStatus && (
+                      <div style={{ padding:"12px 14px", borderRadius:12, background:"rgba(244,162,97,0.07)", borderLeft:"3px solid #F4A261" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7 }}>
+                          <Zap size={13} color="#F4A261"/>
+                          <span style={{ fontSize:"0.6875rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"#F4A261" }}>Burnout Detection</span>
+                        </div>
+                        <p style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.82)", lineHeight:1.65 }}>{result.burnoutStatus}</p>
+                      </div>
+                    )}
+
+                    {result.productivityInsight && (
+                      <div style={{ padding:"12px 14px", borderRadius:12, background:"rgba(155,93,229,0.07)", borderLeft:"3px solid #9B5DE5" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7 }}>
+                          <Brain size={13} color="#9B5DE5"/>
+                          <span style={{ fontSize:"0.6875rem", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", color:"#9B5DE5" }}>Productivity Score</span>
+                        </div>
+                        <p style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.82)", lineHeight:1.65 }}>{result.productivityInsight}</p>
+                      </div>
+                    )}
+
+                  </div>
+                </Section>
+              )}
+
+              {/* ── Personalized Recommendations ─────────── */}
+              {result.personalizedRecommendations && result.personalizedRecommendations.length > 0 && (
+                <Section title="Personalized Recommendations" icon={<Lightbulb size={14} color="#D4A373"/>}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {result.personalizedRecommendations.map((rec, i) => (
+                      <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, padding:"10px 14px", background:"rgba(212,163,115,0.06)", borderRadius:10 }}>
+                        <CheckCircle size={14} color="#D4A373" style={{ flexShrink:0, marginTop:2 }}/>
+                        <p style={{ fontSize:"0.875rem", color:"rgba(255,255,255,0.82)", lineHeight:1.6 }}>{rec}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
 
               {/* Resources */}
               <Section title="Recommended Learning Resources" icon={<Trophy size={14} color="#9B5DE5"/>} defaultOpen={false}>

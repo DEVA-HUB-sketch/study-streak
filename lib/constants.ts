@@ -111,6 +111,55 @@ export const BADGES: BadgeDef[] = [
     color: "#F4A261",
     condition: (s) => s.totalSessions >= 50,
   },
+  /* ── New v1.6 achievements ───────────────────────────────── */
+  {
+    id: "two_hundred_hours",
+    name: "200 Hours Legend",
+    description: "Study for a cumulative 200 hours.",
+    icon: "🌟",
+    color: "#E9C46A",
+    condition: (s) => s.totalMinutes >= 12000,
+  },
+  {
+    id: "ruby_master",
+    name: "Ruby Master",
+    description: "Earn 200 or more Rubies.",
+    icon: "💍",
+    color: "#E63946",
+    condition: (s) => s.totalRubies >= 200,
+  },
+  {
+    id: "streak_14",
+    name: "Fortnight Fighter",
+    description: "Maintain a 14-day study streak.",
+    icon: "🔱",
+    color: "#4895EF",
+    condition: (s) => s.longestStreak >= 14,
+  },
+  {
+    id: "daily_goal_master",
+    name: "Daily Goal Master",
+    description: "Complete 200 total study sessions.",
+    icon: "🎖",
+    color: "#9B5DE5",
+    condition: (s) => s.totalSessions >= 200,
+  },
+  {
+    id: "top_performer",
+    name: "Top Performer",
+    description: "Earn 500 or more Rubies.",
+    icon: "🥇",
+    color: "#FFD700",
+    condition: (s) => s.totalRubies >= 500,
+  },
+  {
+    id: "dedication_500h",
+    name: "Dedicated Scholar",
+    description: "Study for a cumulative 500 hours.",
+    icon: "📜",
+    color: "#2A9D8F",
+    condition: (s) => s.totalMinutes >= 30000,
+  },
 ];
 
 // ── Daily Challenge Templates ─────────────────────────────────
