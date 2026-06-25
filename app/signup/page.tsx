@@ -186,9 +186,31 @@ export default function SignupPage() {
             {step===0 && (
               <motion.div key="s0" initial={{ opacity:0,x:20 }} animate={{ opacity:1,x:0 }} exit={{ opacity:0,x:-20 }} transition={{ duration:0.25 }}>
                 <h1 style={{ fontSize:"1.75rem",fontWeight:800,letterSpacing:"-0.03em",marginBottom:6 }}>Create account</h1>
-                <p style={{ fontSize:"0.9375rem",color:"var(--text-secondary)",marginBottom:24 }}>
+                <p style={{ fontSize:"0.9375rem",color:"var(--text-secondary)",marginBottom:20 }}>
                   Have an account? <Link href="/login" style={{ color:"var(--ruby)",fontWeight:600,textDecoration:"none" }}>Sign in</Link>
                 </p>
+
+                {/* Google Sign-Up */}
+                <motion.a href="/api/auth/google?flow=signup"
+                  whileHover={{ scale:1.01, boxShadow:"0 4px 16px rgba(0,0,0,0.08)" }} whileTap={{ scale:0.99 }}
+                  className="btn btn-secondary"
+                  style={{ width:"100%", marginBottom:16, gap:10, fontSize:"0.9375rem",
+                    display:"flex", alignItems:"center", justifyContent:"center", textDecoration:"none" }}>
+                  <svg width="18" height="18" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.5 0 6.5 1.2 8.9 3.2l6.6-6.6C35.4 2.6 30 0 24 0 14.6 0 6.5 5.5 2.8 13.5l7.7 6C12.2 13.4 17.6 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3.1-2.3 5.7-4.8 7.5l7.5 5.8c4.4-4 6.9-10 6.9-17.3z"/>
+                    <path fill="#FBBC05" d="M10.5 28.6A14.3 14.3 0 0 1 9.5 24c0-1.6.3-3.2.8-4.6l-7.7-6C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.6l7.9-6z"/>
+                    <path fill="#34A853" d="M24 48c6 0 11-2 14.7-5.4l-7.5-5.8c-2 1.4-4.6 2.2-7.2 2.2-6.4 0-11.8-4-13.7-9.4l-7.9 6C6.5 42.5 14.6 48 24 48z"/>
+                  </svg>
+                  Sign up with Google
+                </motion.a>
+
+                <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
+                  <div className="divider" style={{ flex:1 }}/>
+                  <span style={{ fontSize:"0.8125rem",color:"var(--text-tertiary)",whiteSpace:"nowrap" }}>or continue with email</span>
+                  <div className="divider" style={{ flex:1 }}/>
+                </div>
+
                 <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
                   <div style={{ position:"relative" }}>
                     <User size={15} color="var(--text-tertiary)" style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)" }}/>

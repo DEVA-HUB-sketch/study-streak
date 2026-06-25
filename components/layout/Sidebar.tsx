@@ -51,7 +51,7 @@ const NAV_SECTIONS = [
     label:"Account",
     items:[
       { href:"/profile",     label:"Profile",      icon:<User size={16}/> },
-      { href:"/dashboard",   label:"Settings",     icon:<Settings size={16}/> },
+      { href:"/settings",    label:"Settings",     icon:<Settings size={16}/> },
     ],
   },
 ];

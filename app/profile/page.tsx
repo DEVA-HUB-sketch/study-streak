@@ -51,13 +51,15 @@ export default function ProfilePage() {
       if (d && !d.error) {
         setProfile(d);
         setForm({
-          name:         d.name         ?? "",
-          college:      d.college      ?? "",
-          department:   d.department   ?? "",
-          academicYear: d.academicYear ?? "",
-          goals:        d.goals        ?? "",
-          examTarget:   d.examTarget   ?? "",
-        });
+          name:                d.name                ?? "",
+          college:             d.college             ?? "",
+          department:          d.department          ?? "",
+          academicYear:        d.academicYear        ?? "",
+          goals:               d.goals               ?? "",
+          examTarget:          d.examTarget          ?? "",
+          targetCGPA:          d.targetCGPA          != null ? String(d.targetCGPA) : "",
+          preferredStudyHours: d.preferredStudyHours != null ? String(d.preferredStudyHours) : "",
+        } as typeof form);
       }
     });
   }, []);
@@ -197,6 +199,18 @@ export default function ProfilePage() {
                 </Field>
                 <Field label="Target Exam">
                   <input {...INP} value={form.examTarget} onChange={e=>setForm(f=>({...f,examTarget:e.target.value}))} placeholder="e.g. GATE CSE, CAT"/>
+                </Field>
+                <Field label="Target CGPA (0–10)">
+                  <input type="number" {...INP} min="0" max="10" step="0.1"
+                    value={(form as {targetCGPA?:string}).targetCGPA ?? ""}
+                    onChange={e=>setForm(f=>({...f, targetCGPA:e.target.value}))}
+                    placeholder="e.g. 8.5"/>
+                </Field>
+                <Field label="Preferred Study Hours / Day">
+                  <input type="number" {...INP} min="0" max="24" step="0.5"
+                    value={(form as {preferredStudyHours?:string}).preferredStudyHours ?? ""}
+                    onChange={e=>setForm(f=>({...f, preferredStudyHours:e.target.value}))}
+                    placeholder="e.g. 6"/>
                 </Field>
               </motion.div>
             )}

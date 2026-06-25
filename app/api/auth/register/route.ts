@@ -1,8 +1,19 @@
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  /* Rate limit: 3 registrations per hour per IP */
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  const rl  = await rateLimit(`register:${ip}`, 3, 60 * 60);
+  if (!rl.success) {
+    return Response.json(
+      { error: "Too many registrations from this IP. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const { name, email, password, college, department } = await request.json();
 

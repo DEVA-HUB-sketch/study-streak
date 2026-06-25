@@ -16,36 +16,56 @@ interface SessionFormProps {
 const EMPTY = { subject:"", duration:"", date:"", notes:"" };
 
 export default function SessionForm({ editingSession, onSaved, onCancelEdit }: SessionFormProps) {
-  const [form,     setForm]     = useState(EMPTY);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [saving,   setSaving]   = useState(false);
+  const [form,          setForm]          = useState(EMPTY);
+  const [customSubject, setCustomSubject] = useState(""); // tracks free-text when "Other" is selected
+  const [subjects,      setSubjects]      = useState<Subject[]>([]);
+  const [saving,        setSaving]        = useState(false);
 
   useEffect(() => {
-    fetch("/api/subjects").then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setSubjects(d); });
+    fetch("/api/subjects").then(r => r.json()).then(d => { if (Array.isArray(d)) setSubjects(d); });
   }, []);
 
   useEffect(() => {
-    setForm(editingSession
-      ? { subject:editingSession.subject, duration:String(editingSession.duration), date:editingSession.date.slice(0,10), notes:editingSession.notes||"" }
-      : EMPTY
-    );
+    if (editingSession) {
+      setForm({
+        subject:  editingSession.subject,
+        duration: String(editingSession.duration),
+        date:     editingSession.date.slice(0, 10),
+        notes:    editingSession.notes || "",
+      });
+      setCustomSubject("");
+    } else {
+      setForm(EMPTY);
+      setCustomSubject("");
+    }
   }, [editingSession]);
 
-  const set = (k:keyof typeof EMPTY) => (e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) =>
-    setForm(f=>({...f,[k]:e.target.value}));
+  const set = (k: keyof typeof EMPTY) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm(f => ({ ...f, [k]: e.target.value }));
 
-  async function handleSubmit(e:React.FormEvent) {
+  /* The actual subject sent to the API */
+  const resolvedSubject = form.subject === "Other" ? customSubject.trim() : form.subject;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!resolvedSubject) { toast.error("Please enter a subject name."); return; }
     setSaving(true);
     try {
-      const payload = { subject:form.subject, duration:Number(form.duration), date:form.date, notes:form.notes };
+      const payload = {
+        subject:  resolvedSubject,
+        duration: Number(form.duration),
+        date:     form.date,
+        notes:    form.notes,
+      };
       const res = await fetch(
         editingSession ? `/api/sessions/${editingSession._id}` : "/api/sessions",
-        { method: editingSession?"PUT":"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) }
+        { method: editingSession ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
       );
       if (!res.ok) throw new Error("Save failed");
       toast.success(editingSession ? "Session updated!" : "Session logged! +1 Ruby 💎");
       setForm(EMPTY);
+      setCustomSubject("");
       onSaved();
     } catch { toast.error("Failed to save session."); }
     finally { setSaving(false); }
@@ -65,25 +85,49 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
       </div>
 
       <form onSubmit={handleSubmit} style={{ display:"flex", flexDirection:"column", gap:12 }}>
+
         {/* Subject */}
         <div>
           <label className="t-caption" style={{ color:"var(--text-tertiary)", display:"block", marginBottom:5 }}>Subject</label>
+
           {subjects.length > 0 ? (
-            <select value={form.subject} onChange={set("subject")} required className="input-base">
-              <option value="">Choose subject…</option>
-              {subjects.map(s=>(
-                <option key={s._id} value={s.name}>{s.icon} {s.name}</option>
-              ))}
-              <option value="Other">+ Other</option>
-            </select>
+            <>
+              <select
+                value={form.subject}
+                onChange={e => {
+                  setForm(f => ({ ...f, subject: e.target.value }));
+                  if (e.target.value !== "Other") setCustomSubject("");
+                }}
+                required={form.subject !== "Other"}
+                className="input-base"
+              >
+                <option value="">Choose subject…</option>
+                {subjects.map(s => (
+                  <option key={s._id} value={s.name}>{s.icon} {s.name}</option>
+                ))}
+                <option value="Other">+ Other (type below)</option>
+              </select>
+
+              {form.subject === "Other" && (
+                <input
+                  value={customSubject}
+                  onChange={e => setCustomSubject(e.target.value)}
+                  placeholder="Enter subject name"
+                  autoFocus
+                  required
+                  className="input-base"
+                  style={{ marginTop:8 }}
+                />
+              )}
+            </>
           ) : (
-            <input value={form.subject} onChange={set("subject")} placeholder="e.g. Mathematics" required className="input-base" />
-          )}
-          {form.subject === "Other" && (
+            /* No subjects created yet — plain text input */
             <input
-              value="" onChange={e=>setForm(f=>({...f,subject:e.target.value}))}
-              placeholder="Enter subject name" autoFocus required
-              className="input-base" style={{ marginTop:8 }}
+              value={form.subject}
+              onChange={set("subject")}
+              placeholder="e.g. Mathematics"
+              required
+              className="input-base"
             />
           )}
         </div>
@@ -119,7 +163,10 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
             style={{ flex:1 }}
           >
             {saving
-              ? <span style={{ display:"flex", alignItems:"center", gap:8 }}><span className="animate-spin" style={{ width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",display:"inline-block" }}/> Saving…</span>
+              ? <span style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span className="animate-spin" style={{ width:14, height:14, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", display:"inline-block" }}/>
+                  Saving…
+                </span>
               : editingSession
                 ? <><Save size={14}/> Update Session</>
                 : <><Plus size={14}/> Log Session</>
