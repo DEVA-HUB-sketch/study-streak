@@ -14,6 +14,7 @@ import InsightsPanel from "@/components/insights/InsightsPanel";
 import PinnedTimetableWidget, { type PinnedPlan } from "@/components/dashboard/PinnedTimetableWidget";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
 import AnalyticsWidgets from "@/components/dashboard/AnalyticsWidgets";
+import SubjectsWidget from "@/components/dashboard/SubjectsWidget";
 import type { Analytics } from "@/app/api/analytics/route";
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -145,6 +146,9 @@ export default function DashboardPage() {
 
             {/* Stats grid */}
             <StatsGrid stats={stats} />
+
+            {/* Subjects manager — add/edit/delete subjects used across all features */}
+            <SubjectsWidget onChanged={refreshAll}/>
 
             {/* Analytics widgets — Most Studied, Weakest, Readiness */}
             {analytics && analytics.totalSessions > 0 && (

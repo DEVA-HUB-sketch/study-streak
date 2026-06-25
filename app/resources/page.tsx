@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import SubjectSelect, { type SubjectOption } from "@/components/ui/SubjectSelect";
 import toast, { Toaster } from "react-hot-toast";
 import type { ResourceResult } from "@/app/api/resources/route";
 
@@ -99,14 +100,16 @@ const INP = { className:"input-base", style:{ background:"var(--cream)", fontSiz
 export default function ResourcesPage() {
   const { user } = useCurrentUser();
 
-  const [form, setForm] = useState({ subject:"", topic:"", difficulty:"Intermediate", goal:"" });
-  const [loading, setLoading] = useState(false);
-  const [result,  setResult]  = useState<ResourceResult | null>(null);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [error,   setError]   = useState("");
-  const [viewing, setViewing] = useState<HistoryEntry | null>(null);
+  const [form,     setForm]    = useState({ subject:"", topic:"", difficulty:"Intermediate", goal:"" });
+  const [subjects, setSubjects]= useState<SubjectOption[]>([]);
+  const [loading,  setLoading] = useState(false);
+  const [result,   setResult]  = useState<ResourceResult | null>(null);
+  const [history,  setHistory] = useState<HistoryEntry[]>([]);
+  const [error,    setError]   = useState("");
+  const [viewing,  setViewing] = useState<HistoryEntry | null>(null);
 
   useEffect(() => {
+    fetch("/api/subjects").then(r=>r.ok?r.json():null).then(d=>{ if(Array.isArray(d)) setSubjects(d); });
     fetch("/api/resources").then(r=>r.ok?r.json():null).then(d=>{
       if (Array.isArray(d)) setHistory(d);
     });
@@ -164,8 +167,13 @@ export default function ResourcesPage() {
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
             <Field label="Subject *">
-              <input {...INP} value={form.subject} onChange={set("subject")} required
-                placeholder="e.g. Data Structures, DBMS, Mathematics"/>
+              <SubjectSelect
+                subjects={subjects}
+                value={form.subject}
+                onChange={v => setForm(f => ({ ...f, subject: v }))}
+                required
+                placeholder="e.g. Data Structures, DBMS"
+              />
             </Field>
             <Field label="Specific Topic *">
               <input {...INP} value={form.topic} onChange={set("topic")} required

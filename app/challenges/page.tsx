@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import SubjectSelect from "@/components/ui/SubjectSelect";
 import toast, { Toaster } from "react-hot-toast";
 import type { IQuestion } from "@/models/TestResult";
 
@@ -165,21 +166,13 @@ export default function ChallengesPage() {
 
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
                   <Field label="Subject *">
-                    {subjects.length > 0 ? (
-                      <select {...INP} value={form.subject} onChange={set("subject")} required>
-                        <option value="">Choose subject…</option>
-                        {subjects.map(s=><option key={s._id} value={s.name}>{s.icon} {s.name}</option>)}
-                        <option value="__custom">+ Enter manually</option>
-                      </select>
-                    ) : (
-                      <input {...INP} value={form.subject} onChange={set("subject")} required
-                        placeholder="e.g. Data Structures"/>
-                    )}
-                    {form.subject === "__custom" && (
-                      <input {...INP} style={{ ...INP.style, marginTop:8 }}
-                        placeholder="Enter subject name" autoFocus
-                        onChange={e=>setForm(f=>({...f,subject:e.target.value}))} required/>
-                    )}
+                    <SubjectSelect
+                      subjects={subjects}
+                      value={form.subject}
+                      onChange={v => setForm(f => ({ ...f, subject: v }))}
+                      required
+                      placeholder="e.g. Data Structures"
+                    />
                   </Field>
 
                   <Field label="Topic *">

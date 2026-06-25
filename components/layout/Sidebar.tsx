@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Trophy, Medal, Target, BarChart2,
   User, Settings, X, Gem, Flame, ChevronRight, LogOut, Bot, Library,
-  Activity, GraduationCap,
+  Activity, GraduationCap, Layers,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -33,6 +33,7 @@ const NAV_SECTIONS = [
     items: [
       { href:"/dashboard",   label:"Dashboard",    icon:<LayoutDashboard size={16}/> },
       { href:"/sessions",    label:"Sessions",     icon:<BookOpen size={16}/> },
+      { href:"/subjects",    label:"Subjects",     icon:<Layers size={16}/> },
       { href:"/leaderboard", label:"Leaderboard",  icon:<Trophy size={16}/> },
       { href:"/achievements",label:"Achievements", icon:<Medal size={16}/> },
     ],
@@ -62,7 +63,9 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
   const initial     = displayName[0].toUpperCase();
 
   const inner = (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"var(--charcoal)" }}>
+    /* flex:1 + minHeight:0 — makes this div fill the aside and constrains
+       its height so the <nav flex:1> child can clip + scroll correctly */
+    <div style={{ display:"flex", flexDirection:"column", flex:1, minHeight:0, background:"var(--charcoal)" }}>
 
       {/* ── Logo ───────────────────────────────────────── */}
       <div style={{ padding:"20px 20px 16px", borderBottom:"1px solid rgba(255,255,255,0.07)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -86,7 +89,7 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
       </div>
 
       {/* ── Knowledge Brain hero ────────────────────────────── */}
-      <div style={{ padding:"20px 16px 16px", borderBottom:"1px solid rgba(255,255,255,0.07)", position:"relative", overflow:"hidden" }}>
+      <div style={{ padding:"14px 16px 12px", borderBottom:"1px solid rgba(255,255,255,0.07)", position:"relative", overflow:"hidden" }}>
         {/* Section label */}
         <p style={{ fontSize:"0.6875rem", fontWeight:600, letterSpacing:"0.08em", textTransform:"uppercase",
           color:"rgba(255,255,255,0.3)", marginBottom:14, textAlign:"center" }}>
@@ -97,13 +100,15 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
         <div style={{ position:"relative" }}>
           <FloatingKnowledge active={studyActive} />
           <div style={{ display:"flex", justifyContent:"center" }}>
-            <KnowledgeBrain progress={brainProgress} size={196} />
+            <KnowledgeBrain progress={brainProgress} size={160} />
           </div>
         </div>
       </div>
 
       {/* ── Navigation ─────────────────────────────────────── */}
-      <nav style={{ flex:1, padding:"16px 12px", overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
+      {/* minHeight:0 is the CSS flexbox fix — without it, flex:1 children
+          expand to content size instead of being constrained and scrollable */}
+      <nav style={{ flex:1, minHeight:0, padding:"12px 12px", overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
         {NAV_SECTIONS.map((section, si) => (
           <div key={si}>
             {section.label && (
@@ -217,10 +222,11 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
         )}
       </AnimatePresence>
 
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — overflow:hidden so only the <nav> scrolls,
+          not the whole sidebar block */}
       <aside
         className="hidden lg:flex flex-col"
-        style={{ width:280, flexShrink:0, height:"100vh", position:"sticky", top:0, overflowY:"auto" }}
+        style={{ width:280, flexShrink:0, height:"100vh", position:"sticky", top:0, overflow:"hidden" }}
       >
         {inner}
       </aside>

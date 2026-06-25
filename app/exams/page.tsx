@@ -13,6 +13,7 @@ import {
 import { format } from "date-fns";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import SubjectSelect, { type SubjectOption } from "@/components/ui/SubjectSelect";
 import toast, { Toaster } from "react-hot-toast";
 import type { PerformanceAnalysis } from "@/app/api/performance-analysis/route";
 
@@ -135,6 +136,7 @@ function AIPanel({ analysis, onClose }: { analysis: PerformanceAnalysis & { cons
 export default function ExamsPage() {
   const { user }                      = useCurrentUser();
   const [exams,     setExams]         = useState<ExamResult[]>([]);
+  const [subjects,  setSubjects]      = useState<SubjectOption[]>([]);
   const [showForm,  setShowForm]      = useState(false);
   const [saving,    setSaving]        = useState(false);
   const [aiLoading, setAILoading]     = useState(false);
@@ -148,7 +150,10 @@ export default function ExamsPage() {
     const r = await fetch("/api/exams");
     if (r.ok) { const d = await r.json(); if (Array.isArray(d)) setExams(d); }
   }
-  useEffect(() => { loadExams(); }, []);
+  useEffect(() => {
+    loadExams();
+    fetch("/api/subjects").then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d)) setSubjects(d); });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -304,7 +309,13 @@ export default function ExamsPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <Field label="Subject *">
-                    <input {...INP} value={form.subject} onChange={set("subject")} required placeholder="e.g. Data Structures"/>
+                    <SubjectSelect
+                      subjects={subjects}
+                      value={form.subject}
+                      onChange={v => setForm(f => ({ ...f, subject: v }))}
+                      required
+                      placeholder="e.g. Data Structures"
+                    />
                   </Field>
                   <Field label="Exam Name *">
                     <input {...INP} value={form.examName} onChange={set("examName")} required placeholder="e.g. Mid Semester I"/>
