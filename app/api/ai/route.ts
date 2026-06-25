@@ -3,6 +3,7 @@ import { getUserFromRequest } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import StudySession from "@/models/StudySession";
 import User from "@/models/User";
+import AgentMemory from "@/models/AgentMemory";
 import { computeStreaks } from "@/lib/streaks";
 import { computeRubies } from "@/lib/rubies";
 import { BADGES, AchievementStats } from "@/lib/constants";
@@ -118,10 +119,11 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    /* ── Fetch real data from MongoDB ────────────────────── */
-    const [analytics, userDoc] = await Promise.all([
+    /* ── Fetch real data + agent memory from MongoDB ─────── */
+    const [analytics, userDoc, memory] = await Promise.all([
       fetchUserAnalytics(auth.userId),
       User.findById(auth.userId).lean(),
+      AgentMemory.findOne({ userId: auth.userId }).lean(),
     ]);
 
     const daysLeft    = Math.max(1, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86_400_000));
@@ -170,6 +172,14 @@ STUDENT PROFILE
   Self-reported Strong Subjects: ${strongSubjects || "None specified"}
   Exam Date: ${examDate} (${daysLeft} days away)
   Daily Study Hours Available: ${studyHours}
+
+AGENT MEMORY (long-term student profile from AI agent):
+  Preferred study time: ${memory?.preferredStudyTime ?? "Not determined"}
+  Learning style: ${memory?.learningStyle ?? "Not determined"}
+  Known weak subjects: ${memory?.weakSubjects?.join(", ") || "None yet"}
+  Known strong subjects: ${memory?.strongSubjects?.join(", ") || "None yet"}
+  Consistency pattern: ${memory?.consistencyPattern ?? "Insufficient data"}
+  Active goals: ${memory?.activeGoals?.filter(g => !g.completed).map(g => g.description).join("; ") || "None set"}
 ${dataBlock}
 
 Return a JSON object with EXACTLY these keys:

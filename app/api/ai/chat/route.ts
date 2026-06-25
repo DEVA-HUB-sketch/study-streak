@@ -1,6 +1,7 @@
 import Groq from "groq-sdk";
 import { connectDB } from "@/lib/mongodb";
 import StudySession from "@/models/StudySession";
+import AgentMemory from "@/models/AgentMemory";
 import { getUserFromRequest } from "@/lib/auth";
 import { computeStreaks } from "@/lib/streaks";
 import { format, subDays } from "date-fns";
@@ -18,63 +19,73 @@ export async function POST(request: Request) {
       return Response.json({ error: "No messages provided" }, { status: 400 });
     }
 
-    /* ── Fetch real study data for contextual awareness ─── */
+    /* ── Fetch real study data + agent memory ─────────────── */
     let studyContext = "";
+    let memoryContext = "";
     try {
       await connectDB();
-      const sessions = await StudySession.find({ userId: auth.userId })
-        .sort({ date: -1 })
-        .limit(100)
-        .lean();
+      const [sessions, memory] = await Promise.all([
+        StudySession.find({ userId: auth.userId }).sort({ date: -1 }).limit(100).lean(),
+        AgentMemory.findOne({ userId: auth.userId }).lean(),
+      ]);
 
+      /* Agent long-term memory */
+      if (memory) {
+        memoryContext = `
+AGENT MEMORY (long-term student profile):
+  Preferred study time: ${memory.preferredStudyTime}
+  Learning style: ${memory.learningStyle}
+  Known weak subjects: ${memory.weakSubjects.join(", ") || "none"}
+  Known strong subjects: ${memory.strongSubjects.join(", ") || "none"}
+  Consistency pattern: ${memory.consistencyPattern}
+  Active goals: ${memory.activeGoals?.filter(g => !g.completed).map(g => g.description).join("; ") || "none"}`;
+      }
+
+      /* Live session data */
       if (sessions.length > 0) {
         const totalMinutes = sessions.reduce((a, s) => a + s.duration, 0);
         const { currentStreak, longestStreak } = computeStreaks(sessions.map(s => s.date));
 
-        /* Subject distribution */
         const subjectMap: Record<string, number> = {};
         sessions.forEach(s => { subjectMap[s.subject] = (subjectMap[s.subject] ?? 0) + s.duration; });
         const sorted = Object.entries(subjectMap).sort((a, b) => b[1] - a[1]);
         const subjectLines = sorted.map(([name, mins]) => {
           const pct = Math.round((mins / totalMinutes) * 100);
-          return `${name} (${+(mins/60).toFixed(1)}h, ${pct}%)`;
+          return `${name} (${+(mins / 60).toFixed(1)}h, ${pct}%)`;
         }).join(", ");
 
-        /* This week vs last week */
         const thisWeekMins = sessions
           .filter(s => new Date(s.date) >= subDays(new Date(), 6))
           .reduce((a, s) => a + s.duration, 0);
 
-        /* Recent 3 sessions */
         const recentText = sessions.slice(0, 3)
           .map(s => `${format(new Date(s.date), "MMM d")}: ${s.subject} ${s.duration}min`)
           .join(", ");
 
-        /* Least studied subject */
         const leastStudied = sorted[sorted.length - 1];
 
         studyContext = `
 STUDENT'S REAL STUDY DATA (use this to give personalised answers):
-  Total studied: ${+(totalMinutes/60).toFixed(1)}h across ${sessions.length} sessions
+  Total studied: ${+(totalMinutes / 60).toFixed(1)}h across ${sessions.length} sessions
   Current streak: ${currentStreak} days | Best ever: ${longestStreak} days
-  This week: ${+(thisWeekMins/60).toFixed(1)}h
+  This week: ${+(thisWeekMins / 60).toFixed(1)}h
   Subject distribution: ${subjectLines}
   Least studied: ${leastStudied ? leastStudied[0] : "N/A"}
   Recent sessions: ${recentText}`;
       }
-    } catch {
-      /* If DB fetch fails, continue without study context */
-    }
+    } catch { /* continue without context if DB fails */ }
 
-    const systemPrompt = `You are Study Buddy, a friendly AI tutor and academic coach for a college student.
+    const systemPrompt = `You are Study Buddy, a friendly AI tutor and academic coach powered by the Study Streak agent system.
 ${course   ? `Course: ${course}.` : ""}
 ${subjects ? `Subjects the student is studying: ${subjects}.` : ""}
 ${studyContext}
+${memoryContext}
 
 Rules:
-- Reference the student's REAL study data when relevant (streak, weak subjects, hours studied).
-- If they ask "which subject should I focus on?", check their actual distribution and recommend the least-studied one.
-- If they ask "how am I doing?", mention their real streak and total hours.
+- Reference the student's REAL study data and long-term memory when relevant.
+- If they ask "which subject should I focus on?", check actual distribution and agent memory.
+- If they ask "how am I doing?", mention their real streak, hours, and memory patterns.
+- Use memory to personalise explanations to their learning style.
 - Be concise, warm, and encouraging. Keep answers under 200 words unless asked for more.
 - For formulas or code, wrap in backticks.
 - Never say you are Llama or Groq — you are Study Buddy.`;

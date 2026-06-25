@@ -13,9 +13,12 @@ import LoadingScreen from "@/components/ui/LoadingScreen";
 import InsightsPanel from "@/components/insights/InsightsPanel";
 import PinnedTimetableWidget, { type PinnedPlan } from "@/components/dashboard/PinnedTimetableWidget";
 import AIInsightCard from "@/components/dashboard/AIInsightCard";
+import AIMissionCard from "@/components/dashboard/AIMissionCard";
+import AgentPanel from "@/components/dashboard/AgentPanel";
 import AnalyticsWidgets from "@/components/dashboard/AnalyticsWidgets";
 import SubjectsWidget from "@/components/dashboard/SubjectsWidget";
 import type { Analytics } from "@/app/api/analytics/route";
+import type { AgentStateData } from "@/components/dashboard/AIMissionCard";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface AuthUser { _id:string; name:string; email:string; }
@@ -50,6 +53,8 @@ export default function DashboardPage() {
   const [studyActive,     setStudyActive]     = useState(false);
   const [pinnedPlan,      setPinnedPlan]      = useState<PinnedPlan | null>(null);
   const [analytics,       setAnalytics]       = useState<Analytics | null>(null);
+  /* Agent state — loaded separately so it doesn't block the rest of the dashboard */
+  const [agentState,      setAgentState]      = useState<AgentStateData | null>(null);
   const prevCelebrated = useRef(false);
 
   const todayMinutes = sessions.filter(s => {
@@ -65,7 +70,7 @@ export default function DashboardPage() {
   const fetchStats       = useCallback(async()=>{ const r=await fetch("/api/stats");       if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setStats(d as Stats); },[]);
   const fetchChallenge   = useCallback(async()=>{ const r=await fetch("/api/challenges");  if(!r.ok) return; const d:unknown=await r.json(); if(d&&typeof d==="object") setChallenge(d as Challenge); },[]);
   const fetchLeaderboard = useCallback(async()=>{ const r=await fetch("/api/leaderboard"); if(!r.ok) return; const d:unknown=await r.json(); if(Array.isArray(d)) setLeaderboard(d as LeaderboardEntry[]); },[]);
-
+  const fetchAnalytics   = useCallback(async()=>{ const r=await fetch("/api/analytics");   if(!r.ok) return; const d: Analytics | null=await r.json(); if(d&&!("error"in d)) setAnalytics(d); },[]);
   const fetchPinnedPlan  = useCallback(async()=>{
     const r = await fetch("/api/timetable");
     if (!r.ok) return;
@@ -73,18 +78,20 @@ export default function DashboardPage() {
     setPinnedPlan(d);
   },[]);
 
-  const fetchAnalytics   = useCallback(async()=>{
-    const r = await fetch("/api/analytics");
+  /* Agent state is fetched independently by AIMissionCard, but we also
+     poll it here so AgentPanel in the right sidebar gets the data */
+  const fetchAgentState  = useCallback(async()=>{
+    const r = await fetch("/api/agent/state");
     if (!r.ok) return;
-    const d: Analytics | null = await r.json();
-    if (d && !("error" in d)) setAnalytics(d);
+    const d: AgentStateData | null = await r.json();
+    if (d && !("error" in d)) setAgentState(d);
   },[]);
 
   const refreshAll = useCallback(async()=>{
     await Promise.all([fetchSessions(), fetchStats(), fetchChallenge(), fetchLeaderboard(), fetchAnalytics()]);
   },[fetchSessions, fetchStats, fetchChallenge, fetchLeaderboard, fetchAnalytics]);
 
-  useEffect(()=>{ fetchUser(); fetchPinnedPlan(); },[fetchUser, fetchPinnedPlan]);
+  useEffect(()=>{ fetchUser(); fetchPinnedPlan(); fetchAgentState(); },[fetchUser, fetchPinnedPlan, fetchAgentState]);
   useEffect(()=>{ refreshAll(); },[refreshAll]);
 
   useEffect(()=>{
@@ -119,11 +126,16 @@ export default function DashboardPage() {
           brainProgress={brainProgress}
           studyActive={studyActive}
           rightPanel={
-            <InsightsPanel
-              leaderboard={leaderboard}
-              unlockedBadgeIds={stats.unlockedBadgeIds}
-              challenge={challenge}
-            />
+            <>
+              {/* ── Agent Panel — powered by Groq reasoning ── */}
+              <AgentPanel state={agentState}/>
+              {/* ── Existing insights (leaderboard, badges, challenge) ── */}
+              <InsightsPanel
+                leaderboard={leaderboard}
+                unlockedBadgeIds={stats.unlockedBadgeIds}
+                challenge={challenge}
+              />
+            </>
           }
         >
           <div style={{ padding:24, display:"flex", flexDirection:"column", gap:20, maxWidth:900, margin:"0 auto" }}>
@@ -136,7 +148,12 @@ export default function DashboardPage() {
               totalRubies={stats.totalRubies}
             />
 
-            {/* Today's AI Insight — data-driven, rule-based */}
+            {/* ── TODAY'S AI MISSION (Agentic — Groq-powered) ── */}
+            <AIMissionCard
+              onRebalanced={() => { fetchPinnedPlan(); fetchAgentState(); }}
+            />
+
+            {/* ── Rule-based AI insight (instant, no Groq) ─── */}
             {analytics && <AIInsightCard analytics={analytics} />}
 
             {/* Pinned AI study plan (if any) */}
@@ -147,10 +164,10 @@ export default function DashboardPage() {
             {/* Stats grid */}
             <StatsGrid stats={stats} />
 
-            {/* Subjects manager — add/edit/delete subjects used across all features */}
+            {/* Subjects manager */}
             <SubjectsWidget onChanged={refreshAll}/>
 
-            {/* Analytics widgets — Most Studied, Weakest, Readiness */}
+            {/* Analytics widgets */}
             {analytics && analytics.totalSessions > 0 && (
               <AnalyticsWidgets analytics={analytics} pinnedPlan={pinnedPlan}/>
             )}
