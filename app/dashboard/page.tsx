@@ -155,7 +155,7 @@ export default function DashboardPage() {
             </>
           }
         >
-          <div className="page-container" style={{ maxWidth:900 }}>
+          <div className="page-container" style={{ maxWidth: 860 }}>
 
             {/* Welcome hero */}
             <WelcomeHero

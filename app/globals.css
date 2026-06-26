@@ -427,16 +427,19 @@ html, body {
 
 /* ── Responsive page containers ───────────────────────────── */
 .page-container {
-  padding: 24px;
+  /* Consistent center-column layout used by every dashboard page */
+  padding: 24px 20px;
   max-width: 960px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
 }
 @media (max-width: 767px) {
   .page-container {
-    padding: 16px;
+    padding: 16px 14px;
     gap: 14px;
   }
 }
