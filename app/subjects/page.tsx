@@ -172,7 +172,7 @@ export default function SubjectsPage() {
                 </div>
 
                 {/* Icon + Colour side by side */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div className="grid-2-col">
 
                   {/* Icon picker */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -136,7 +136,7 @@ export default function ChallengesPage() {
   return (
     <DashboardLayout user={user}>
       <Toaster position="top-right"/>
-      <div style={{ padding:24, maxWidth:860, margin:"0 auto", display:"flex", flexDirection:"column", gap:20 }}>
+      <div className="page-container" style={{ maxWidth:860 }}>
 
         {/* ── Header ──────────────────────────────────────────── */}
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>

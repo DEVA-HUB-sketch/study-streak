@@ -19,6 +19,7 @@ import AnalyticsWidgets from "@/components/dashboard/AnalyticsWidgets";
 import SubjectsWidget from "@/components/dashboard/SubjectsWidget";
 import type { Analytics } from "@/app/api/analytics/route";
 import type { AgentStateData } from "@/components/dashboard/AIMissionCard";
+import { triggerRubyReward } from "@/hooks/useRubyReward";
 
 /* ── Types ─────────────────────────────────────────────────── */
 interface AuthUser { _id:string; name:string; email:string; }
@@ -55,7 +56,10 @@ export default function DashboardPage() {
   const [analytics,       setAnalytics]       = useState<Analytics | null>(null);
   /* Agent state — loaded separately so it doesn't block the rest of the dashboard */
   const [agentState,      setAgentState]      = useState<AgentStateData | null>(null);
-  const prevCelebrated = useRef(false);
+  const prevCelebrated  = useRef(false);
+  /* Track previous ruby total — fire animation when it increases
+     (covers streak milestones, 100h club, challenge rewards, etc.) */
+  const prevRubies      = useRef<number | null>(null);
 
   const todayMinutes = sessions.filter(s => {
     const d = new Date(s.date); const t = new Date();
@@ -99,6 +103,21 @@ export default function DashboardPage() {
     if(brainProgress<100) prevCelebrated.current=false;
   },[brainProgress]);
 
+  /* Detect ruby increases from streak milestones, challenges, 100h badge, etc.
+     SessionForm already triggers for +1 (optimistic), so skip delta of 1
+     to avoid a double animation on basic session logs. */
+  useEffect(()=>{
+    const current = stats.totalRubies;
+    if (prevRubies.current !== null && current > prevRubies.current) {
+      const delta = current - prevRubies.current;
+      if (delta > 1) {
+        // Large delta = milestone bonus (7-day +10, 30-day +50, 100h +100, etc.)
+        triggerRubyReward({ amount: delta });
+      }
+    }
+    prevRubies.current = current;
+  },[stats.totalRubies]);
+
   async function handleSessionSaved(){
     setEditingSession(null);
     setStudyActive(true);
@@ -127,9 +146,7 @@ export default function DashboardPage() {
           studyActive={studyActive}
           rightPanel={
             <>
-              {/* ── Agent Panel — powered by Groq reasoning ── */}
               <AgentPanel state={agentState}/>
-              {/* ── Existing insights (leaderboard, badges, challenge) ── */}
               <InsightsPanel
                 leaderboard={leaderboard}
                 unlockedBadgeIds={stats.unlockedBadgeIds}
@@ -138,7 +155,7 @@ export default function DashboardPage() {
             </>
           }
         >
-          <div style={{ padding:24, display:"flex", flexDirection:"column", gap:20, maxWidth:900, margin:"0 auto" }}>
+          <div className="page-container" style={{ maxWidth:900 }}>
 
             {/* Welcome hero */}
             <WelcomeHero
@@ -172,6 +189,20 @@ export default function DashboardPage() {
               <AnalyticsWidgets analytics={analytics} pinnedPlan={pinnedPlan}/>
             )}
 
+            {/* ── Mobile-only inline panels ────────────────────────
+                Shown here (after analytics) only on < 1280px screens.
+                On 1280px+ they are hidden here and show in the aside.
+                No duplicate rendering issue — CSS display:none removes
+                them from layout while keeping one DOM instance.          */}
+            <div className="db-panel-inline">
+              <AgentPanel state={agentState}/>
+              <InsightsPanel
+                leaderboard={leaderboard}
+                unlockedBadgeIds={stats.unlockedBadgeIds}
+                challenge={challenge}
+              />
+            </div>
+
             {/* Charts */}
             <StudyChart
               labels={stats.chart.labels}
@@ -179,8 +210,8 @@ export default function DashboardPage() {
               subjectBreakdown={stats.subjectBreakdown}
             />
 
-            {/* Session management */}
-            <div style={{ display:"grid", gridTemplateColumns:"320px 1fr", gap:20, alignItems:"start" }}>
+            {/* Session management — stacks to single column below 900px */}
+            <div className="session-layout">
               <SessionForm
                 editingSession={editingSession}
                 onSaved={handleSessionSaved}

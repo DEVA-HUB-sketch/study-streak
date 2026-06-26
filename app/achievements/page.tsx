@@ -21,7 +21,7 @@ export default function AchievementsPage() {
 
   return (
     <DashboardLayout user={user} totalRubies={totalRubies}>
-      <div className="p-5 max-w-4xl mx-auto">
+      <div className="page-container" style={{ maxWidth: 900 }}>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <div className="flex items-center gap-3 mb-1">
             <Medal size={22} style={{ color: "var(--gold)" }} />

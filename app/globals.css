@@ -356,3 +356,465 @@ body {
 
 /* Date picker icon tint */
 input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.4; cursor: pointer; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE SYSTEM
+   All breakpoints consistent with the sidebar/layout usage:
+     Mobile:  ≤767px
+     Tablet:  768px – 1023px
+     Desktop: ≥1024px
+═══════════════════════════════════════════════════════════ */
+
+/* ── Base mobile safety ───────────────────────────────────── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* ── Touch-target minimum ─────────────────────────────────── */
+@media (max-width: 767px) {
+  .btn, button, a[role="button"] { min-height: 44px; }
+  .btn-icon { min-height: 36px; min-width: 36px; }
+}
+
+/* ── Responsive grid utilities ────────────────────────────── */
+
+/* Two-column session form + list → stack on mobile */
+.session-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .session-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Generic 2-col responsive grid */
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 639px) {
+  .grid-2-col { grid-template-columns: 1fr; }
+}
+
+/* 3-col responsive grid */
+.grid-3-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 767px) {
+  .grid-3-col { grid-template-columns: 1fr; }
+}
+@media (min-width: 640px) and (max-width: 767px) {
+  .grid-3-col { grid-template-columns: 1fr 1fr; }
+}
+
+/* Auto-fill responsive grid */
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+@media (max-width: 479px) {
+  .grid-auto { grid-template-columns: 1fr; }
+}
+
+/* ── Responsive page containers ───────────────────────────── */
+.page-container {
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (max-width: 767px) {
+  .page-container {
+    padding: 16px;
+    gap: 14px;
+  }
+}
+@media (max-width: 479px) {
+  .page-container {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+/* ── Dashboard layout adjustments ─────────────────────────── */
+@media (max-width: 767px) {
+  /* Card padding reduction on mobile */
+  .card { padding: var(--space-4); }
+  .card-sm { padding: var(--space-3); }
+
+  /* Typography scale down */
+  .t-display { font-size: 1.75rem; }
+  .t-h1      { font-size: 1.5rem; }
+  .t-h2      { font-size: 1.25rem; }
+  .t-h3      { font-size: 1rem; }
+}
+
+/* ── Tables → scrollable on mobile ───────────────────────── */
+.table-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}
+.table-scroll-x table {
+  min-width: 600px;
+}
+
+/* ── Forms ────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .input-base {
+    font-size: 1rem; /* prevents iOS auto-zoom on focus */
+  }
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── AI pages ─────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* AI results section dark cards */
+  .ai-results-container {
+    padding: 14px !important;
+    gap: 12px !important;
+  }
+  /* Chat bubbles */
+  .chat-bubble { max-width: 90% !important; }
+}
+
+/* ── Sidebar overlap guard ────────────────────────────────── */
+/* Prevents main content from being hidden behind sidebar on transition */
+.sidebar-content-guard {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ── Section headings on mobile ───────────────────────────── */
+@media (max-width: 767px) {
+  h1 { font-size: clamp(1.375rem, 6vw, 1.75rem) !important; }
+  h2 { font-size: clamp(1.25rem, 5vw, 1.5rem) !important; }
+  h3 { font-size: clamp(1rem, 4vw, 1.125rem) !important; }
+}
+
+/* ── Stats grid mobile ────────────────────────────────────── */
+@media (max-width: 639px) {
+  .stats-grid-mobile {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Chart container ──────────────────────────────────────── */
+.chart-responsive {
+  width: 100%;
+  overflow: hidden;
+}
+@media (max-width: 767px) {
+  .chart-responsive {
+    height: 220px !important;
+  }
+}
+
+/* ── Analytics widgets responsive ────────────────────────── */
+@media (max-width: 639px) {
+  .analytics-widgets-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Right panel (AI agent + insights) ───────────────────── */
+/* On < xl the right panel collapses via the 'hidden xl:flex' class on the aside */
+/* Ensure inner content doesn't overflow when visible */
+.right-panel > * {
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* ── Subjects grid ────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .subjects-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (min-width: 640px) and (max-width: 767px) {
+  .subjects-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── Timetable table mobile ───────────────────────────────── */
+@media (max-width: 767px) {
+  .timetable-table { min-width: 480px; }
+  .timetable-wrap  { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+/* ── Leaderboard table mobile ─────────────────────────────── */
+@media (max-width: 639px) {
+  .leaderboard-row {
+    grid-template-columns: 36px 1fr auto auto !important;
+  }
+  .leaderboard-col-sessions { display: none !important; }
+}
+
+/* ── Profile & Settings form ──────────────────────────────── */
+@media (max-width: 639px) {
+  .profile-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── CTA / Banner sections ────────────────────────────────── */
+@media (max-width: 767px) {
+  .cta-section { padding: 48px 20px !important; }
+  .cta-section h2 { font-size: 1.625rem !important; }
+}
+
+/* ── Heatmap horizontal scroll ────────────────────────────── */
+.heatmap-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+
+/* ── Modal overlays ───────────────────────────────────────── */
+@media (max-width: 639px) {
+  .modal-content {
+    margin: 12px;
+    max-width: calc(100vw - 24px) !important;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* ── Floating AI mentor button — safe zone on mobile ─────── */
+@media (max-width: 767px) {
+  /* Push the floating mentor button up so it clears mobile nav bars */
+  div[style*="bottom: 28px"][style*="right: 28px"] {
+    bottom: 80px !important;
+    right: 16px !important;
+  }
+  div[style*="bottom: 92px"][style*="right: 28px"] {
+    bottom: 144px !important;
+    right: 16px !important;
+    width: calc(100vw - 32px) !important;
+  }
+}
+
+/* ── Landing page responsive helpers ─────────────────────── */
+@media (max-width: 1023px) {
+  .hero-grid  { grid-template-columns: 1fr !important; }
+  .footer-grid { grid-template-columns: 1fr 1fr !important; gap: 28px !important; }
+}
+@media (max-width: 767px) {
+  .footer-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  .hero-grid   { max-width: 100% !important; text-align: center; }
+  /* Center hero CTAs on mobile */
+  .hero-ctas   { justify-content: center !important; flex-direction: column !important; }
+  .hero-ctas > * { width: 100% !important; justify-content: center !important; }
+  /* Social proof row */
+  .hero-social { justify-content: center !important; }
+  /* Landing stats: 2 col on mobile */
+  .landing-stats-grid { grid-template-columns: 1fr 1fr !important; }
+  /* Landing features: 1 col on mobile */
+  .landing-features-grid { grid-template-columns: 1fr !important; }
+  /* Testimonials: 1 col on mobile */
+  .landing-testimonials { grid-template-columns: 1fr !important; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DASHBOARD LAYOUT — CLASS-BASED RESPONSIVE DISPLAY
+   Using CSS classes avoids the inline-style vs Tailwind conflict.
+   Inline styles have higher specificity than class rules, so
+   never put `display` in a style prop on a responsive element.
+══════════════════════════════════════════════════════════ */
+
+/* Right aside: hidden on mobile, flex column on xl+ */
+.db-sidebar-aside {
+  display: none;
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--cream);
+  padding: 20px;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (min-width: 1280px) {
+  .db-sidebar-aside { display: flex; }
+}
+
+/* Inline right-panel slot at BOTTOM (fallback) */
+.db-mobile-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 24px;
+}
+@media (min-width: 1280px) {
+  .db-mobile-panel { display: none; }
+}
+
+/* Inline panel inside MAIN CONTENT — shows on mobile, hidden on desktop
+   Used so AgentPanel/InsightsPanel appear in the correct content flow
+   on mobile without duplicating in the aside (which shows on xl+).     */
+.db-panel-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (min-width: 1280px) {
+  .db-panel-inline { display: none; }
+}
+
+/* Header greeting — mobile stacked version */
+.hdr-greeting-mobile {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .hdr-greeting-mobile { display: none; }
+}
+
+/* Header greeting — desktop inline version */
+.hdr-greeting-desktop {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .hdr-greeting-desktop { display: flex; }
+}
+
+/* ── Extra mobile tweaks (320px – 479px) ─────────────────── */
+@media (max-width: 479px) {
+  /* Dashboard page-container tighter on very small screens */
+  .page-container { padding: 10px; gap: 10px; }
+
+  /* Cards: reduce padding to 12px */
+  .card     { padding: 12px; border-radius: 14px; }
+  .card-sm  { padding: 10px; border-radius: 12px; }
+
+  /* Stats grid: 2 columns at 320px */
+  .stats-grid-mobile { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+  /* SubjectsWidget inline grid: 1 col */
+  .grid-2-col { grid-template-columns: 1fr !important; }
+
+  /* Buttons: ensure they're large enough to tap */
+  .btn { min-height: 44px; font-size: 0.9rem; }
+  .btn-sm { min-height: 36px; font-size: 0.8125rem; }
+
+  /* AI mission card: reduce padding */
+  .ai-results-container { padding: 12px !important; }
+  /* Chat bubbles: wider on small screens */
+  .chat-bubble { max-width: 95% !important; }
+}
+
+/* ── Dashboard header height consistency ─────────────────── */
+@media (max-width: 1023px) {
+  /* Ensure the main content area accounts for the fixed 56px header */
+  main { scroll-padding-top: 56px; }
+}
+
+/* ── Leaderboard cards on mobile ─────────────────────────── */
+@media (max-width: 639px) {
+  .leaderboard-card {
+    padding: 10px 12px !important;
+  }
+  /* Hide "sessions" column, keep rank+name+hours+streak+rubies */
+  .leaderboard-col-sessions { display: none !important; }
+  .leaderboard-col-hours    { display: none !important; }
+}
+
+/* ── AI Agent panel on mobile ────────────────────────────── */
+@media (max-width: 767px) {
+  /* Score rings: smaller on mobile */
+  .agent-score-ring { width: 52px !important; height: 52px !important; }
+  /* Agent panel prediction row: stack */
+  .agent-prediction-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+}
+
+/* ── AIMissionCard dark container ────────────────────────── */
+@media (max-width: 767px) {
+  .ai-mission-metrics {
+    grid-template-columns: 1fr 1fr !important; /* 2x instead of 3x */
+  }
+}
+
+/* ── Session list table: full width on mobile ─────────────── */
+@media (max-width: 767px) {
+  .session-list-row {
+    grid-template-columns: 1fr auto auto auto !important;
+  }
+}
+
+/* ── Profile form grid ────────────────────────────────────── */
+@media (max-width: 639px) {
+  .profile-form-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Settings change-password grid ───────────────────────── */
+@media (max-width: 639px) {
+  .settings-pw-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Challenges (test) question options ───────────────────── */
+@media (max-width: 639px) {
+  /* Difficulty buttons */
+  .challenge-diff-row { flex-wrap: wrap !important; }
+  .challenge-diff-row > button { flex: 1 1 calc(50% - 4px); }
+  /* Count buttons */
+  .challenge-count-row { flex-wrap: wrap !important; }
+}
+
+/* ── Progress page monthly bars ──────────────────────────── */
+@media (max-width: 479px) {
+  /* Reduce bar gap on very narrow screens */
+  .monthly-bars-row { gap: 6px !important; }
+}
+
+/* ── Subjects page form grid ──────────────────────────────── */
+@media (max-width: 639px) {
+  .subjects-form-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Floating AI mentor: safe area on mobile ─────────────── */
+@media (max-width: 767px) {
+  /* Safe zone at bottom for devices with home indicator */
+  .ai-mentor-float {
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 16px !important;
+  }
+  .ai-mentor-panel {
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    left: 8px !important;
+    right: 8px !important;
+  }
+}
+
+/* ── Word-break safety ────────────────────────────────────── */
+p, span, li, a, td, th, label {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ── Image max-width guard ────────────────────────────────── */
+img, svg, canvas { max-width: 100%; }

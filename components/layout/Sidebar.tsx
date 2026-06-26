@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,6 +62,21 @@ export default function Sidebar({ open, onClose, user, brainProgress, currentStr
   const path = usePathname();
   const displayName = user?.name ?? "Future Achiever";
   const initial     = displayName[0].toUpperCase();
+
+  /* Prevent body scroll while mobile drawer is open */
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+      document.body.style.touchAction = "";
+    };
+  }, [open]);
 
   const inner = (
     /* flex:1 + minHeight:0 — makes this div fill the aside and constrains

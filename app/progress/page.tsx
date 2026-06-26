@@ -120,7 +120,7 @@ export default function ProgressPage() {
 
   return (
     <DashboardLayout user={user} totalRubies={totalRubies} currentStreak={streak.current}>
-      <div style={{ padding: 24, maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="page-container" style={{ maxWidth: 1000 }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -173,7 +173,10 @@ export default function ProgressPage() {
             </span>
           </div>
           {sessions.length > 0 ? (
-            <StudyHeatmap data={heatmapData} year={year}/>
+            /* Horizontal scroll so heatmap never clips on narrow screens */
+            <div className="heatmap-scroll">
+              <StudyHeatmap data={heatmapData} year={year}/>
+            </div>
           ) : (
             <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-tertiary)" }}>
               <Activity size={32} style={{ margin: "0 auto 10px", opacity: 0.3 }}/>

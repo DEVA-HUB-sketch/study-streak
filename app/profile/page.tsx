@@ -110,7 +110,7 @@ export default function ProfilePage() {
   return (
     <DashboardLayout user={user} totalRubies={stats?.totalRubies ?? 0}>
       <Toaster position="top-right"/>
-      <div style={{ padding:20, maxWidth:800, margin:"0 auto" }}>
+      <div className="page-container" style={{ maxWidth:800 }}>
 
         {/* ── Profile card ──────────────────────────────────── */}
         <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}

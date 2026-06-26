@@ -5,7 +5,19 @@ const resend = process.env.RESEND_API_KEY
   : null;
 
 const FROM = process.env.RESEND_FROM_EMAIL ?? "Study Streak <noreply@studystreak.app>";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+/* ── URL resolution ─────────────────────────────────────────────
+   APP_URL          — server-only, always runtime (set this in Vercel)
+   NEXT_PUBLIC_APP_URL — baked at build time, may be stale
+   Both must NOT have a trailing slash.
+────────────────────────────────────────────────────────────────── */
+function getAppUrl(): string {
+  return (
+    process.env.APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
 
 /* ── Password Reset Email ─────────────────────────────────── */
 export async function sendPasswordResetEmail(
@@ -13,28 +25,66 @@ export async function sendPasswordResetEmail(
   name: string,
   token: string
 ): Promise<{ success: boolean; error?: string }> {
-  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+  const appUrl   = getAppUrl();
+  const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
+  /* Development / no API key — log to console */
   if (!resend) {
-    // Development fallback — log to console when no API key is set
     console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("[EMAIL] Password reset for:", to);
+    console.log("[EMAIL] RESEND_API_KEY not set — logging instead of sending");
+    console.log("[EMAIL] To:      ", to);
     console.log("[EMAIL] Reset URL:", resetUrl);
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     return { success: true };
   }
 
+  /* Validate the "from" domain before attempting to send */
+  const fromEmail = FROM.match(/<(.+)>/)?.[1] ?? FROM;
+  const fromDomain = fromEmail.split("@")[1] ?? "";
+
+  if (fromDomain === "resend.dev" || fromDomain === "studystreak.app") {
+    /* onboarding@resend.dev only works for the Resend account owner —
+       it will SILENTLY FAIL for any other recipient on Vercel.
+       Log a clear warning so this is visible in Vercel function logs. */
+    console.warn(
+      "[EMAIL] WARNING: You are using a test/unverified 'from' domain:",
+      FROM,
+      "\n  Emails will only be delivered to the Resend account owner.",
+      "\n  To send to real users: verify your own domain at https://resend.com/domains",
+      "\n  Then set RESEND_FROM_EMAIL=noreply@yourdomain.com in Vercel."
+    );
+  }
+
   try {
-    await resend.emails.send({
-      from: FROM,
+    console.log("[EMAIL] Sending reset email", {
+      to,
+      from:   FROM,
+      appUrl,
+      resetUrl,
+    });
+
+    const result = await resend.emails.send({
+      from:    FROM,
       to,
       subject: "Reset your Study Streak password",
-      html: buildResetEmail(name, resetUrl),
+      html:    buildResetEmail(name, resetUrl),
     });
+
+    console.log("[EMAIL] Resend API response", result);
+
+    /* Resend returns { data: { id }, error: null } on success
+       or { data: null, error: { message } } on failure */
+    if ((result as { error?: { message?: string } }).error) {
+      const errMsg = (result as { error: { message: string } }).error.message;
+      console.error("[EMAIL] Resend returned an error:", errMsg);
+      return { success: false, error: errMsg };
+    }
+
     return { success: true };
   } catch (err) {
-    console.error("[Email] Failed to send reset email:", err);
-    return { success: false, error: "Failed to send email" };
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[EMAIL] Exception while sending:", msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -80,7 +130,10 @@ function buildResetEmail(name: string, resetUrl: string): string {
           <p style="margin:0 0 8px;color:#9B9B9B;font-size:13px;line-height:1.6;">
             This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email.
           </p>
-          <p style="margin:0;color:#9B9B9B;font-size:13px;">Or copy this link: <a href="${resetUrl}" style="color:#E63946;">${resetUrl}</a></p>
+          <p style="margin:0;color:#9B9B9B;font-size:13px;">
+            Or copy this link:<br/>
+            <a href="${resetUrl}" style="color:#E63946;word-break:break-all;">${resetUrl}</a>
+          </p>
         </td></tr>
 
         <!-- Footer -->

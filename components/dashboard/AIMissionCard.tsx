@@ -223,7 +223,8 @@ export default function AIMissionCard({ onRebalanced }: Props) {
           </div>
 
           {/* ── Key metrics chips ────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <div className="ai-mission-metrics"
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {[
               { label: "Priority",  value: state.priority.split(" ").slice(0, 3).join(" ") + (state.priority.split(" ").length > 3 ? "…" : ""),
                 icon: <Target size={12}/>,    color: "#E63946" },

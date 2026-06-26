@@ -47,10 +47,15 @@ export default function WelcomeHero({ currentStreak, totalMinutes, brainProgress
           <span className="badge badge-ruby" style={{ marginBottom:10, display:"inline-flex" }}>
             ✦ {greeting}
           </span>
-          <h1 style={{ fontSize:"1.5rem", fontWeight:800, color:"var(--text-primary)", letterSpacing:"-0.03em", marginBottom:6 }}>
+          <h1 style={{
+            fontSize: "clamp(1.125rem, 4vw, 1.5rem)",
+            fontWeight: 800, color: "var(--text-primary)",
+            letterSpacing: "-0.03em", marginBottom: 6,
+            wordBreak: "break-word",
+          }}>
             Welcome back, <span style={{ color:"var(--ruby)" }}>Future Achiever!</span>
           </h1>
-          <p style={{ fontSize:"0.875rem", color:"var(--text-secondary)", fontStyle:"italic", lineHeight:1.5 }}>
+          <p style={{ fontSize:"0.875rem", color:"var(--text-secondary)", fontStyle:"italic", lineHeight:1.5, wordBreak:"break-word" }}>
             &ldquo;{quote}&rdquo;
           </p>
         </div>
@@ -81,8 +86,8 @@ export default function WelcomeHero({ currentStreak, totalMinutes, brainProgress
           </p>
         </div>
 
-        {/* Quick stats row */}
-        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+        {/* Quick stats row — wraps gracefully on narrow screens */}
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
           {[
             { icon:<Flame size={14} color="#E63946"/>, label:`${currentStreak} day streak`, color:"rgba(230,57,70,0.1)", textColor:"#E63946" },
             { icon:<span style={{fontSize:14}}>⏱</span>, label:`${hours}h total`, color:"rgba(72,149,239,0.1)", textColor:"#4895EF" },

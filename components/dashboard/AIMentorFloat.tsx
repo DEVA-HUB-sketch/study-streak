@@ -43,7 +43,7 @@ export default function AIMentorFloat() {
         onClick={() => setOpen(o => !o)}
         whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
         style={{
-          position: "fixed", bottom: 28, right: 28, zIndex: 40,
+          position: "fixed", bottom: 20, right: 20, zIndex: 40,
           width: 52, height: 52, borderRadius: "50%",
           background: "linear-gradient(135deg,#9B5DE5,#4895EF)",
           border: "none", cursor: "pointer",
@@ -63,8 +63,8 @@ export default function AIMentorFloat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             style={{
-              position: "fixed", bottom: 92, right: 28, zIndex: 41,
-              width: 360, borderRadius: 20,
+              position: "fixed", bottom: 84, right: 8, zIndex: 41,
+              width: "min(360px, calc(100vw - 16px))", borderRadius: 20,
               background: "linear-gradient(160deg,#1F1F1F,#141010)",
               border: "1px solid rgba(255,255,255,0.1)",
               boxShadow: "0 24px 80px rgba(0,0,0,0.6)",

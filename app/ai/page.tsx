@@ -250,7 +250,7 @@ export default function AICoachPage() {
   return (
     <DashboardLayout user={user}>
       <Toaster position="top-right"/>
-      <div style={{ padding:24, maxWidth:900, margin:"0 auto", display:"flex", flexDirection:"column", gap:20 }}>
+      <div className="page-container" style={{ maxWidth:900 }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
@@ -273,7 +273,7 @@ export default function AICoachPage() {
         <motion.form onSubmit={handleGenerate} initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }}
           style={{ background:"var(--cream)", border:"1px solid var(--border)", borderRadius:20, padding:24, display:"flex", flexDirection:"column", gap:16 }}>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          <div className="grid-2-col">
             <Field label="Course / Degree *">
               <input {...INP} placeholder="e.g. B.Tech Computer Science" value={form.course} onChange={set("course")} required/>
             </Field>
@@ -290,7 +290,7 @@ export default function AICoachPage() {
               value={form.subjects} onChange={set("subjects")} required style={{ ...INP.style, resize:"none" }}/>
           </Field>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          <div className="grid-2-col">
             <Field label="Weak Subjects">
               <input {...INP} placeholder="e.g. Mathematics, Physics" value={form.weakSubjects} onChange={set("weakSubjects")}/>
             </Field>
@@ -299,7 +299,7 @@ export default function AICoachPage() {
             </Field>
           </div>
 
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          <div className="grid-2-col">
             <Field label="Exam Date *">
               <input type="date" {...INP} value={form.examDate} onChange={set("examDate")} required min={new Date().toISOString().slice(0,10)}/>
             </Field>

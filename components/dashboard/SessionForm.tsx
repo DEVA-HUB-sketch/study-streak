@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, Save, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { triggerRubyReward } from "@/hooks/useRubyReward";
 
 interface StudySession { _id:string; subject:string; duration:number; date:string; notes?:string; }
 interface Subject { _id:string; name:string; color:string; icon:string; }
@@ -64,6 +65,8 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
       );
       if (!res.ok) throw new Error("Save failed");
       toast.success(editingSession ? "Session updated!" : "Session logged! +1 Ruby 💎");
+      /* Fly one ruby toward the counter badge */
+      if (!editingSession) triggerRubyReward({ amount: 1 });
       setForm(EMPTY);
       setCustomSubject("");
       onSaved();

@@ -42,7 +42,8 @@ const CARDS = [
 
 export default function StatsGrid({ stats }: { stats: Stats }) {
   return (
-    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:12 }}>
+    <div className="stats-grid-mobile"
+      style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:10 }}>
       {CARDS.map(({ key, label, Icon, accent, iconBg, iconColor, unit }, i) => (
         <motion.div
           key={key}

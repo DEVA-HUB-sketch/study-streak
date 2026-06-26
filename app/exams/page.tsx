@@ -231,7 +231,7 @@ export default function ExamsPage() {
       <Toaster position="top-right"/>
       {analysis && <AIPanel analysis={analysis} onClose={() => setAnalysis(null)}/>}
 
-      <div style={{ padding: 24, maxWidth: 960, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="page-container" style={{ maxWidth: 960 }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -353,7 +353,7 @@ export default function ExamsPage() {
 
         {/* Charts */}
         {exams.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="grid-2-col">
             {/* Subject Average */}
             <div style={{ background: "var(--cream)", border: "1px solid var(--border)", borderRadius: 20, padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
@@ -424,7 +424,9 @@ export default function ExamsPage() {
               <p style={{ color: "var(--text-secondary)" }}>No exam results yet. Add your first result above!</p>
             </div>
           ) : (
-            <>
+            /* Horizontal scroll wrapper so table never breaks on mobile */
+            <div className="table-scroll-x">
+              <div style={{ minWidth: 540 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 90px 100px 80px 80px 40px",
                 padding: "8px 20px", gap: 8 }}>
                 {["Subject","Exam","Date","Marks","Score","Grade",""].map(h => (
@@ -448,7 +450,8 @@ export default function ExamsPage() {
                   </button>
                 </motion.div>
               ))}
-            </>
+              </div>
+            </div>
           )}
         </div>
       </div>

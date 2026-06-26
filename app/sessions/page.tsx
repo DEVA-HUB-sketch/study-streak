@@ -69,7 +69,7 @@ export default function SessionsPage() {
 
   return (
     <DashboardLayout user={user} totalRubies={totalRubies} currentStreak={currentStreak}>
-      <div style={{ padding:24, maxWidth:960, margin:"0 auto", display:"flex", flexDirection:"column", gap:20 }}>
+      <div className="page-container" style={{ maxWidth:960 }}>
 
         {/* Header */}
         <motion.div initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}>
