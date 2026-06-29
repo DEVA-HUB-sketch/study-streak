@@ -81,13 +81,13 @@ RULES:
 - Explanations must teach the concept, not just restate the answer`;
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",   // 500K TPD quota — separate from 70B limit
       messages: [
         { role: "system", content: "You are an expert MCQ setter. Respond with valid JSON only." },
         { role: "user",   content: prompt },
       ],
       temperature: 0.6,
-      max_tokens: 4096,
+      max_tokens: 2000,
     });
 
     const raw = completion.choices[0]?.message?.content ?? "";

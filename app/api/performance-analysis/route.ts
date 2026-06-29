@@ -32,17 +32,20 @@ export async function POST(request: Request) {
   try {
     await connectDB();
 
-    /* ── Fetch everything in parallel ─────────────────────────── */
-    const [sessions, exams, userDoc, dbSubjects, memory, agentState] = await Promise.all([
-      StudySession.find({ userId: auth.userId }).sort({ date: -1 }).lean(),
-      ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).lean(),
+    /* ── Fetch data in parallel with strict limits ────────────────
+       Vercel Hobby timeout = 10s. Caps prevent large-dataset slowdowns.
+       Essential data (sessions + exams + user) runs first; optional
+       context (subjects, memory, agentState) runs in parallel. */
+    const [sessions, exams, userDoc, memory, agentState] = await Promise.all([
+      StudySession.find({ userId: auth.userId }).sort({ date: -1 }).limit(100).lean(),
+      ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).limit(15).lean(),
       User.findById(auth.userId)
         .select("name college department academicYear targetCGPA preferredStudyHours examTarget goals")
         .lean(),
-      Subject.find({ userId: auth.userId }).lean(),
       AgentMemory.findOne({ userId: auth.userId }).lean(),
       AgentState.findOne({ userId: auth.userId }).lean(),
     ]);
+    // dbSubjects removed from critical path — not essential for analysis
 
     /* ── Analytics ────────────────────────────────────────────── */
     const totalMinutes  = sessions.reduce((a, s) => a + s.duration, 0);
@@ -142,7 +145,7 @@ Department: ${(userDoc as {department?:string})?.department ?? "—"}
 Year:       ${(userDoc as {academicYear?:string})?.academicYear ?? "—"}
 Target CGPA:${(userDoc as {targetCGPA?:number})?.targetCGPA ?? "not set"}
 Exam goal:  ${(userDoc as {examTarget?:string})?.examTarget ?? "not set"}
-Subjects library: ${dbSubjects.map(s => s.name).join(", ") || "none saved"}
+Goals:      ${(userDoc as {goals?:string})?.goals ?? "not set"}
 
 ════════════════════════════════════════════
 REAL-TIME SESSION DATA (fetched live from MongoDB at ${nowStr})
@@ -214,29 +217,43 @@ Return this EXACT JSON:
 
 REMINDER: The most recently studied subject is "${latestSession?.subject ?? "none"}" — cite this accurately in mentorMessage and performanceReport.`;
 
-    const completion = await groq.chat.completions.create({
-      model:       "llama-3.3-70b-versatile",
-      messages:    [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt },
-      ],
-      temperature: 0.5,
-      max_tokens:  2048,
-    });
+    let completion;
+    try {
+      completion = await groq.chat.completions.create({
+        model:       "llama-3.1-8b-instant",   // 500K TPD quota — separate from 70B limit
+        messages:    [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt },
+        ],
+        temperature: 0.5,
+        max_tokens:  900,
+      });
+    } catch (groqErr: unknown) {
+      const e = groqErr as { status?: number; message?: string };
+      console.error("[performance-analysis] Groq error:", e?.status, e?.message);
+      if (e?.status === 429) {
+        return Response.json({ error: "AI is busy — please wait a moment and try again." }, { status: 429 });
+      }
+      return Response.json({ error: "AI service unavailable. Please try again in a few seconds." }, { status: 503 });
+    }
 
     const raw = completion.choices[0]?.message?.content ?? "";
     let jsonStr = raw.trim();
     const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fence) jsonStr = fence[1].trim();
 
-    const analysis: PerformanceAnalysis = JSON.parse(jsonStr);
+    let analysis: PerformanceAnalysis;
+    try {
+      analysis = JSON.parse(jsonStr);
+    } catch {
+      console.error("[performance-analysis] JSON parse failed, raw:", raw.slice(0, 200));
+      return Response.json({ error: "AI returned unexpected format. Please try again." }, { status: 500 });
+    }
+
     return Response.json({ ...analysis, consistencyScore });
 
   } catch (err) {
     console.error("[POST /api/performance-analysis]", err);
-    if (err instanceof SyntaxError) {
-      return Response.json({ error: "AI returned unexpected format. Please try again." }, { status: 500 });
-    }
     return Response.json({ error: "Analysis failed. Please try again." }, { status: 500 });
   }
 }

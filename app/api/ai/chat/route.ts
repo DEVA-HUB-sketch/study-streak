@@ -215,13 +215,13 @@ HOW TO ANSWER:
 - For maths, code, or formulas: use backtick formatting.`;
 
     const stream = await groq.chat.completions.create({
-      model:       "llama-3.3-70b-versatile",
+      model:       "llama-3.1-8b-instant",   // 500K TPD quota — separate from 70B limit
       messages:    [
         { role: "system", content: systemPrompt },
-        ...messages.slice(-14),
+        ...messages.slice(-12),
       ],
       temperature: 0.65,
-      max_tokens:  1200,
+      max_tokens:  900,
       stream:      true,
     });
 

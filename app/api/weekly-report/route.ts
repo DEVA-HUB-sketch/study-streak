@@ -39,9 +39,10 @@ export async function GET(request: Request) {
     const weekEnd   = endOfWeek(new Date(),   { weekStartsOn: 1 });
     const prevStart = subDays(weekStart, 7);
 
-    /* Fetch all sessions (for accurate streak) + exams */
+    /* Fetch sessions with limit (300 is enough for accurate streak + 13-day window)
+       Vercel Hobby timeout = 10s — unbounded queries are the #1 cause of 504s */
     const [allSessions, exams] = await Promise.all([
-      StudySession.find({ userId: auth.userId }).sort({ date: -1 }).lean(),
+      StudySession.find({ userId: auth.userId }).sort({ date: -1 }).limit(300).lean(),
       ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).limit(15).lean(),
     ]);
 
@@ -162,17 +163,24 @@ Return ONLY this JSON (no markdown, no extra text):
   "motivationClose": "<1 sentence warm personalised encouragement>"
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model:       "llama-3.3-70b-versatile",
-      messages:    [
-        { role: "system", content: "You are an academic performance analyst. Respond ONLY with valid JSON, no markdown fences." },
-        { role: "user",   content: prompt },
-      ],
-      temperature: 0.6,
-      max_tokens:  800,
-    });
+    let raw = "{}";
+    try {
+      const completion = await groq.chat.completions.create({
+        model:       "llama-3.1-8b-instant",   // 500K TPD quota — separate from 70B limit
+        messages:    [
+          { role: "system", content: "You are an academic performance analyst. Respond ONLY with valid JSON, no markdown fences." },
+          { role: "user",   content: prompt },
+        ],
+        temperature: 0.6,
+        max_tokens:  600,
+      });
+      raw = completion.choices[0]?.message?.content ?? "{}";
+    } catch (groqErr: unknown) {
+      const e = groqErr as { status?: number };
+      console.warn("[weekly-report] Groq error:", e?.status, "— using fallback analysis");
+      // Don't throw — fall through to the safe-parse fallback below
+    }
 
-    const raw = completion.choices[0]?.message?.content ?? "{}";
     let jsonStr = raw.trim();
     const fence = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fence) jsonStr = fence[1].trim();
@@ -182,7 +190,7 @@ Return ONLY this JSON (no markdown, no extra text):
     try {
       aiData = JSON.parse(jsonStr);
     } catch {
-      console.warn("[weekly-report] Groq returned non-JSON, using fallback");
+      console.warn("[weekly-report] JSON parse failed, using fallback");
       aiData = {
         aiSummary:       `You studied ${+(totalMinutes/60).toFixed(1)}h across ${thisWeekSessions.length} sessions this week across ${subjectBreakdown.length} subject${subjectBreakdown.length !== 1 ? "s" : ""}.`,
         examPrediction:  consistencyScore >= 60 ? "On track for good performance if this consistency is maintained." : "More consistent study sessions needed for reliable exam predictions.",
