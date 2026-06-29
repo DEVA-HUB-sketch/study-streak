@@ -14,13 +14,9 @@ import Groq from "groq-sdk";
 import { getUserFromRequest } from "@/lib/auth";
 import { connectDB }          from "@/lib/mongodb";
 import { extractText }        from "unpdf";
-import StudySession  from "@/models/StudySession";
-import ExamResult    from "@/models/ExamResult";
-import Subject       from "@/models/Subject";
-import User          from "@/models/User";
-import AgentMemory   from "@/models/AgentMemory";
-import AgentState    from "@/models/AgentState";
-import { format, subDays } from "date-fns";
+import ExamResult  from "@/models/ExamResult";
+import User        from "@/models/User";
+import AgentMemory from "@/models/AgentMemory";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -107,47 +103,32 @@ export async function POST(request: Request) {
       return Response.json({ error: "No content found. Please upload a file or paste text." }, { status: 400 });
     }
 
-    /* ── 2. Fetch student context from MongoDB in parallel ────── */
+    /* ── 2. Fetch essential student context (3 queries, not 6) ───
+       Only weak subjects, exam scores, and user name are needed to
+       personalise document analysis. Keeping it minimal stays within
+       Vercel's 10s timeout and minimises token consumption. */
     await connectDB();
 
-    const [sessions, exams, dbSubjects, userDoc, memory, agentState] = await Promise.all([
-      StudySession.find({ userId: auth.userId }).sort({ date: -1 }).limit(50).lean(),
-      ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).limit(15).lean(),
-      Subject.find({ userId: auth.userId }).lean(),
-      User.findById(auth.userId)
-        .select("name college department academicYear targetCGPA preferredStudyHours examTarget goals")
-        .lean(),
+    const [exams, userDoc, memory] = await Promise.all([
+      ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).limit(10).lean(),
+      User.findById(auth.userId).select("name department academicYear targetCGPA").lean(),
       AgentMemory.findOne({ userId: auth.userId }).lean(),
-      AgentState.findOne({ userId: auth.userId }).lean(),
     ]);
 
-    /* ── 3. Compute analytics ────────────────────────────────── */
-    const totalMinutes  = sessions.reduce((a, s) => a + s.duration, 0);
-    const subjectMap: Record<string, number> = {};
-    sessions.forEach(s => { subjectMap[s.subject] = (subjectMap[s.subject] ?? 0) + s.duration; });
-    const subjectRanked = Object.entries(subjectMap)
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, mins]) => `${name}:${+(mins/60).toFixed(1)}h(${totalMinutes > 0 ? Math.round(mins/totalMinutes*100) : 0}%)`)
-      .join(", ") || "no sessions yet";
-
-    /* Exam performance */
+    /* ── 3. Compute personalisation context (compact) ───────────
+       Only what's needed for accurate, personalised document analysis. */
     const examBySubject: Record<string, number[]> = {};
     exams.forEach(e => {
       if (!examBySubject[e.subject]) examBySubject[e.subject] = [];
       examBySubject[e.subject].push(e.percentage);
     });
-    const examAvgLines = Object.entries(examBySubject)
-      .map(([subj, scores]) => {
-        const avg = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
-        return `${subj}: avg ${avg}% (${scores.length} exam${scores.length>1?"s":""})`;
-      }).join(", ") || "no exam data";
 
     const weakSubjects: string[] = [
       ...(memory?.weakSubjects ?? []),
       ...Object.entries(examBySubject)
         .filter(([, scores]) => scores.reduce((a,b)=>a+b,0)/scores.length < 60)
         .map(([name]) => name),
-    ].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
+    ].filter((v, i, a) => a.indexOf(v) === i);
 
     const strongSubjects: string[] = [
       ...(memory?.strongSubjects ?? []),
@@ -156,64 +137,21 @@ export async function POST(request: Request) {
         .map(([name]) => name),
     ].filter((v, i, a) => a.indexOf(v) === i);
 
-    /* Upcoming exams */
-    const upcomingExamContext = "";
+    const examSummary = Object.entries(examBySubject)
+      .map(([subj, scores]) => `${subj}:avg ${Math.round(scores.reduce((a,b)=>a+b,0)/scores.length)}%`)
+      .join(", ") || "no exam data";
 
-    /* Recent sessions */
-    const recentSessions = sessions.slice(0, 5)
-      .map(s => `${format(new Date(s.date), "MMM d")}: ${s.subject} ${s.duration}min`)
-      .join(", ") || "none";
-
-    /* Today's stats */
-    const todayKey = format(new Date(), "yyyy-MM-dd");
-    const todayMins = sessions
-      .filter(s => format(new Date(s.date), "yyyy-MM-dd") === todayKey)
-      .reduce((a, s) => a + s.duration, 0);
-    const thisWeekMins = sessions
-      .filter(s => new Date(s.date) >= subDays(new Date(), 6))
-      .reduce((a, s) => a + s.duration, 0);
-
-    /* ── 4. Build the comprehensive student context block ─────── */
-    const studentProfile = `
-════════════════════════════════════════════════
-STUDENT PROFILE — Live data from MongoDB (${format(new Date(), "EEE MMM d yyyy, h:mm a")})
-════════════════════════════════════════════════
-Name:         ${userDoc?.name ?? "Student"}
-College:      ${(userDoc as {college?:string})?.college ?? "—"}
-Department:   ${(userDoc as {department?:string})?.department ?? "—"}
-Year:         ${(userDoc as {academicYear?:string})?.academicYear ?? "—"}
-Target CGPA:  ${(userDoc as {targetCGPA?:number})?.targetCGPA ?? "not set"}
-Exam goal:    ${(userDoc as {examTarget?:string})?.examTarget ?? "not set"}
-Goals:        ${(userDoc as {goals?:string})?.goals ?? "not set"}
-
-STUDY HISTORY:
-  Total studied: ${+(totalMinutes/60).toFixed(1)}h across ${sessions.length} sessions
-  Today: ${todayMins}min | This week: ${+(thisWeekMins/60).toFixed(1)}h
-  Subjects (by time): ${subjectRanked}
-  Recent sessions: ${recentSessions}
-
-EXAM PERFORMANCE:
-  ${examAvgLines}
-  Last 5 exams: ${exams.slice(0,5).map(e => `${e.subject}:${e.percentage}%(${e.grade})`).join(", ") || "none"}
-
-AI AGENT MEMORY (learned patterns):
-  Weak subjects: ${weakSubjects.join(", ") || "none identified yet"}
-  Strong subjects: ${strongSubjects.join(", ") || "none identified yet"}
-  Learning style: ${memory?.learningStyle ?? "not determined"}
-  Study pattern: ${memory?.consistencyPattern ?? "insufficient data"}
-  Preferred study time: ${memory?.preferredStudyTime ?? "not determined"}
-  Active goals: ${memory?.activeGoals?.filter(g=>!g.completed).map(g=>g.description).join("; ") || "none"}
-
-CURRENT AGENT STATUS:
-  ${agentState ? `Risk level: ${agentState.riskLevel} | Burnout: ${agentState.burnoutLevel} | Agent: ${agentState.agentStatus}` : "No agent data yet"}
-  ${agentState?.mission ? `Today's mission: ${agentState.mission}` : ""}
-
-SUBJECT LIBRARY:
-  ${dbSubjects.map(s => s.name).join(", ") || "none saved"}
-════════════════════════════════════════════════`;
+    /* ── 4. Compact student context (keeps token count low) ──────── */
+    const studentProfile =
+`STUDENT: ${userDoc?.name ?? "Student"} | ${(userDoc as {department?:string})?.department ?? ""} ${(userDoc as {academicYear?:string})?.academicYear ?? ""}
+Weak subjects: ${weakSubjects.join(", ") || "none yet"}
+Strong subjects: ${strongSubjects.join(", ") || "none yet"}
+Exam scores: ${examSummary}
+Learning style: ${memory?.learningStyle ?? "not determined"}
+Goals: ${memory?.activeGoals?.filter(g=>!g.completed).map(g=>g.description).join("; ") || "none"}`;
 
     /* ── 5. Build personalised action prompt ─────────────────── */
-    const actionInstruction = buildActionPrompt(action, weakSubjects, upcomingExamContext);
+    const actionInstruction = buildActionPrompt(action, weakSubjects, "");
     const isJson = action === "quiz" || action === "flashcards";
 
     /* Truncate document to ~10k chars to leave room for context */
@@ -245,17 +183,27 @@ PERSONALISATION RULES:
 6. If the document topic overlaps with a weak subject, flag it prominently`;
 
     /* ── 6. Call Groq ────────────────────────────────────────── */
-    const completion = await groq.chat.completions.create({
-      model:       "llama-3.3-70b-versatile",
-      messages:    [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt },
-      ],
-      temperature: 0.55,
-      max_tokens:  3500,
-    });
+    let completion;
+    try {
+      completion = await groq.chat.completions.create({
+        model:       "llama-3.1-8b-instant",   // 500K TPD quota — won't hit daily limit
+        messages:    [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt },
+        ],
+        temperature: 0.55,
+        max_tokens:  2500,
+      });
+    } catch (groqErr: unknown) {
+      const e = groqErr as { status?: number; message?: string };
+      console.error("[study-assistant] Groq error:", e?.status, e?.message);
+      if (e?.status === 429) {
+        return Response.json({ error: "AI is busy — please try again in a few minutes." }, { status: 429 });
+      }
+      return Response.json({ error: "AI service unavailable. Please try again." }, { status: 503 });
+    }
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const raw = completion!.choices[0]?.message?.content ?? "";
 
     /* ── 7. Parse and return ─────────────────────────────────── */
     const result: AssistantResult = {
