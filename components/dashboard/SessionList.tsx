@@ -124,9 +124,9 @@ export default function SessionList({ sessions, onEdit, onRefresh }: SessionList
 
       {/* ── Table header ───────────────────────────────────── */}
       {filtered.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 72px 80px 72px",
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 72px 100px 72px",
           padding:"7px 20px", gap:8 }}>
-          {["Subject","Duration","Date",""].map(h=>(
+          {["Subject","Duration","Date & Time",""].map(h=>(
             <span key={h} className="t-caption" style={{ color:"var(--text-tertiary)" }}>{h}</span>
           ))}
         </div>
@@ -154,7 +154,7 @@ export default function SessionList({ sessions, onEdit, onRefresh }: SessionList
                   exit={{ opacity:0, x:6 }} transition={{ delay:i*0.02 }} layout>
 
                   <div
-                    style={{ display:"grid", gridTemplateColumns:"1fr 72px 80px 72px",
+                    style={{ display:"grid", gridTemplateColumns:"1fr 72px 100px 72px",
                       alignItems:"center", padding:"9px 20px", gap:8,
                       cursor:"pointer", transition:"background var(--t-fast)",
                       borderBottom:"1px solid var(--border)" }}
@@ -174,9 +174,14 @@ export default function SessionList({ sessions, onEdit, onRefresh }: SessionList
                       <span style={{ fontSize:"0.8125rem", color:"var(--text-secondary)" }}>{s.duration}m</span>
                     </div>
 
-                    <span style={{ fontSize:"0.8125rem", color:"var(--text-tertiary)" }}>
-                      {format(new Date(s.date),"MMM d, yy")}
-                    </span>
+                    <div>
+                      <span style={{ fontSize:"0.8125rem", color:"var(--text-secondary)", display:"block" }}>
+                        {format(new Date(s.date),"MMM d, yy")}
+                      </span>
+                      <span style={{ fontSize:"0.6875rem", color:"var(--text-tertiary)", display:"block", marginTop:1 }}>
+                        {format(new Date(s.date),"h:mm a")}
+                      </span>
+                    </div>
 
                     <div style={{ display:"flex", gap:2, justifyContent:"flex-end" }}
                       onClick={e=>e.stopPropagation()}>

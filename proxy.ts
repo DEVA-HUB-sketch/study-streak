@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, COOKIE_NAME } from "@/lib/auth";
 
-const PROTECTED = ["/dashboard", "/leaderboard", "/achievements", "/profile", "/subjects", "/sessions", "/ai", "/resources", "/challenges", "/progress", "/exams", "/settings"];
+const PROTECTED = ["/dashboard", "/leaderboard", "/achievements", "/profile", "/subjects", "/sessions", "/ai", "/resources", "/challenges", "/progress", "/exams", "/settings", "/study-assistant", "/career", "/weekly-report", "/calendar"];
 const AUTH_ONLY = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 export function proxy(request: NextRequest) {
@@ -38,6 +38,10 @@ export const config = {
     "/progress/:path*",
     "/exams/:path*",
     "/settings/:path*",
+    "/study-assistant/:path*",
+    "/career/:path*",
+    "/weekly-report/:path*",
+    "/calendar/:path*",
     "/login",
     "/signup",
     "/forgot-password",

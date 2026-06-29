@@ -17,6 +17,7 @@ import AIMissionCard from "@/components/dashboard/AIMissionCard";
 import AgentPanel from "@/components/dashboard/AgentPanel";
 import AnalyticsWidgets from "@/components/dashboard/AnalyticsWidgets";
 import SubjectsWidget from "@/components/dashboard/SubjectsWidget";
+import DailyMotivation from "@/components/dashboard/DailyMotivation";
 import type { Analytics } from "@/app/api/analytics/route";
 import type { AgentStateData } from "@/components/dashboard/AIMissionCard";
 import { triggerRubyReward } from "@/hooks/useRubyReward";
@@ -127,6 +128,9 @@ export default function DashboardPage() {
 
   return (
     <>
+      {/* Daily motivation — shown once per day, fades in after 800ms */}
+      <DailyMotivation/>
+
       <AnimatePresence>
         {loading && <LoadingScreen onDone={()=>setLoading(false)} />}
       </AnimatePresence>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, Save, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { format } from "date-fns";
 import { triggerRubyReward } from "@/hooks/useRubyReward";
 
 interface StudySession { _id:string; subject:string; duration:number; date:string; notes?:string; }
@@ -14,7 +15,7 @@ interface SessionFormProps {
   onCancelEdit: () => void;
 }
 
-const EMPTY = { subject:"", duration:"", date:"", notes:"" };
+const EMPTY = { subject:"", duration:"", date:"", time:"", notes:"" };
 
 export default function SessionForm({ editingSession, onSaved, onCancelEdit }: SessionFormProps) {
   const [form,          setForm]          = useState(EMPTY);
@@ -28,15 +29,24 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
 
   useEffect(() => {
     if (editingSession) {
+      /* Extract date + time from the stored ISO string */
+      const d = new Date(editingSession.date);
       setForm({
         subject:  editingSession.subject,
         duration: String(editingSession.duration),
-        date:     editingSession.date.slice(0, 10),
+        date:     format(d, "yyyy-MM-dd"),
+        time:     format(d, "HH:mm"),
         notes:    editingSession.notes || "",
       });
       setCustomSubject("");
     } else {
-      setForm(EMPTY);
+      /* Default new sessions to today's date and current time */
+      const now = new Date();
+      setForm({
+        ...EMPTY,
+        date: format(now, "yyyy-MM-dd"),
+        time: format(now, "HH:mm"),
+      });
       setCustomSubject("");
     }
   }, [editingSession]);
@@ -53,10 +63,15 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
     if (!resolvedSubject) { toast.error("Please enter a subject name."); return; }
     setSaving(true);
     try {
+      /* Combine date + time into a full ISO datetime.
+         Falls back to current time if time field is somehow empty. */
+      const timeStr = form.time || format(new Date(), "HH:mm");
+      const isoDate = new Date(`${form.date}T${timeStr}`).toISOString();
+
       const payload = {
         subject:  resolvedSubject,
         duration: Number(form.duration),
-        date:     form.date,
+        date:     isoDate,
         notes:    form.notes,
       };
       const res = await fetch(
@@ -135,15 +150,27 @@ export default function SessionForm({ editingSession, onSaved, onCancelEdit }: S
           )}
         </div>
 
-        {/* Duration + Date */}
+        {/* Duration */}
+        <div>
+          <label className="t-caption" style={{ color:"var(--text-tertiary)", display:"block", marginBottom:5 }}>Duration (min)</label>
+          <input type="number" min="1" value={form.duration} onChange={set("duration")} placeholder="60" required className="input-base" />
+        </div>
+
+        {/* Date + Time — side by side */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-          <div>
-            <label className="t-caption" style={{ color:"var(--text-tertiary)", display:"block", marginBottom:5 }}>Duration (min)</label>
-            <input type="number" min="1" value={form.duration} onChange={set("duration")} placeholder="60" required className="input-base" />
-          </div>
           <div>
             <label className="t-caption" style={{ color:"var(--text-tertiary)", display:"block", marginBottom:5 }}>Date</label>
             <input type="date" value={form.date} onChange={set("date")} required className="input-base" />
+          </div>
+          <div>
+            <label className="t-caption" style={{ color:"var(--text-tertiary)", display:"block", marginBottom:5 }}>Time</label>
+            <input
+              type="time"
+              value={form.time}
+              onChange={set("time")}
+              required
+              className="input-base"
+            />
           </div>
         </div>
 

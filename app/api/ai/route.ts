@@ -2,8 +2,10 @@ import Groq from "groq-sdk";
 import { getUserFromRequest } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import StudySession from "@/models/StudySession";
-import User from "@/models/User";
-import AgentMemory from "@/models/AgentMemory";
+import ExamResult   from "@/models/ExamResult";
+import Subject      from "@/models/Subject";
+import User         from "@/models/User";
+import AgentMemory  from "@/models/AgentMemory";
 import { computeStreaks } from "@/lib/streaks";
 import { computeRubies } from "@/lib/rubies";
 import { BADGES, AchievementStats } from "@/lib/constants";
@@ -120,14 +122,38 @@ export async function POST(request: Request) {
     await connectDB();
 
     /* ── Fetch real data + agent memory from MongoDB ─────── */
-    const [analytics, userDoc, memory] = await Promise.all([
+    const [analytics, userDoc, memory, dbSubjects, exams] = await Promise.all([
       fetchUserAnalytics(auth.userId),
       User.findById(auth.userId).lean(),
       AgentMemory.findOne({ userId: auth.userId }).lean(),
+      Subject.find({ userId: auth.userId }).lean(),
+      ExamResult.find({ userId: auth.userId }).sort({ examDate: -1 }).limit(15).lean(),
     ]);
 
-    const daysLeft    = Math.max(1, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86_400_000));
-    const weeksCount  = Math.min(4, Math.ceil(daysLeft / 7));
+    /* ── Exam performance context ────────────────────────── */
+    const examBySubject: Record<string, number[]> = {};
+    exams.forEach(e => {
+      if (!examBySubject[e.subject]) examBySubject[e.subject] = [];
+      examBySubject[e.subject].push(e.percentage);
+    });
+    const examPerfLines = Object.entries(examBySubject)
+      .map(([subj, scores]) => {
+        const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+        const best = Math.max(...scores);
+        const worst = Math.min(...scores);
+        return `  ${subj}: avg ${avg}% (best ${best}%, worst ${worst}%, ${scores.length} exams)`;
+      }).join("\n");
+
+    const recentExamsText = exams.slice(0, 8)
+      .map(e => `  ${e.subject} | ${e.examName} | ${e.percentage}% (${e.grade}) on ${e.examDate}${e.studyHoursBeforeExam ? ` | studied ${e.studyHoursBeforeExam}h before` : ""}`)
+      .join("\n");
+
+    /* Auto-fill subjects from DB if student has a subject library */
+    const resolvedSubjects = subjects.trim() ||
+      (dbSubjects.length > 0 ? dbSubjects.map(s => s.name).join(", ") : subjects);
+
+    const daysLeft   = Math.max(1, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86_400_000));
+    const weeksCount = Math.min(4, Math.ceil(daysLeft / 7));
 
     /* ── Build real-data context block ───────────────────── */
     const dataBlock = analytics
@@ -161,13 +187,28 @@ Use this REAL DATA to:
     const systemPrompt = `You are an expert AI Performance Coach powered by real MongoDB study data.
 Respond ONLY with a single valid JSON object — no markdown fences, no extra text.`;
 
+    const examDataBlock = exams.length > 0 ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REAL EXAM PERFORMANCE FROM MONGODB:
+Recent exams:
+${recentExamsText}
+
+Per-subject averages:
+${examPerfLines}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Use exam data to:
+1. Set weakSubjectAnalysis to subjects with low averages (<60%) or inconsistent scores
+2. Calibrate examReadinessScore against ACTUAL past performance, not just study hours
+3. Identify subjects where more study hours correlate with better exam scores
+` : "\nNo exam records found — base analysis on study time distribution only.\n";
+
     const userPrompt = `Analyse this student's REAL study history and generate a comprehensive, data-driven study plan.
 
 STUDENT PROFILE
   Name: ${name || userDoc?.name || "Student"}
   Course: ${course}
   Year: ${year || "Not specified"}
-  All Subjects: ${subjects}
+  All Subjects: ${resolvedSubjects}
   Self-reported Weak Subjects: ${weakSubjects || "None specified"}
   Self-reported Strong Subjects: ${strongSubjects || "None specified"}
   Exam Date: ${examDate} (${daysLeft} days away)
@@ -181,7 +222,7 @@ AGENT MEMORY (long-term student profile from AI agent):
   Consistency pattern: ${memory?.consistencyPattern ?? "Insufficient data"}
   Active goals: ${memory?.activeGoals?.filter(g => !g.completed).map(g => g.description).join("; ") || "None set"}
 ${dataBlock}
-
+${examDataBlock}
 Return a JSON object with EXACTLY these keys:
 
 {
@@ -210,10 +251,11 @@ Return a JSON object with EXACTLY these keys:
 
 RULES:
   - timetable: exactly ${Number(studyHours) <= 4 ? 4 : 6} slots covering ${studyHours}h; include a 15min break slot
-  - subjectMethods: one entry for EVERY subject in the list
+  - subjectMethods: one entry for EVERY subject in: ${resolvedSubjects}
   - weeklyRoadmap: exactly ${weeksCount} entries
-  - resources: focus on lowest-time subjects first
-  - personalizedRecommendations: each must reference specific data (e.g., actual subject names, streak number, hours)
+  - resources: focus on subjects with lowest study time OR worst exam scores
+  - personalizedRecommendations: each must reference specific data (actual subject names, real scores, streak number, hours)
+  - weakSubjectAnalysis: cross-reference BOTH study time AND exam scores — a subject with low time AND low scores is highest priority
   - Never say "based on your self-report" — use actual DB data`;
 
     const completion = await groq.chat.completions.create({

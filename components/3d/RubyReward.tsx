@@ -23,6 +23,45 @@ import * as THREE from "three";
 import type { GLTF } from "three-stdlib";
 import { type RubyRewardPayload, RUBY_REWARD_EVENT } from "@/hooks/useRubyReward";
 
+/* ── Sparkle particle (pure DOM/CSS — no Three.js) ─────────── */
+interface Sparkle {
+  id:   string;
+  x:    number;
+  y:    number;
+  dx:   number;
+  dy:   number;
+  size: number;
+  hue:  number; // red/gold variation
+}
+
+function SparkleLayer({ sparkles }: { sparkles: Sparkle[] }) {
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 9997, pointerEvents: "none", overflow: "hidden" }}>
+      {sparkles.map(s => (
+        <div key={s.id} style={{
+          position:  "absolute",
+          left:      s.x,
+          top:       s.y,
+          width:     s.size,
+          height:    s.size,
+          borderRadius: "50%",
+          background: `hsl(${s.hue},90%,65%)`,
+          boxShadow: `0 0 ${s.size * 2}px hsl(${s.hue},90%,65%)`,
+          animation: "sparkle-fly 0.9s ease-out forwards",
+          transform: `translate(${s.dx}px, ${s.dy}px)`,
+        }}/>
+      ))}
+      <style>{`
+        @keyframes sparkle-fly {
+          0%   { opacity:1; transform:translate(0,0) scale(1); }
+          60%  { opacity:0.7; }
+          100% { opacity:0; transform:translate(var(--sdx,0px),var(--sdy,0px)) scale(0.1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ── Constants ─────────────────────────────────────────────── */
 const MODEL_PATH   = "/models/object_ruby.glb";
 const TARGET_ID    = "ruby-counter";      // id on the ruby badge in DashboardLayout
@@ -231,8 +270,9 @@ function randomSpawn(): { x: number; y: number } {
    via next/dynamic with { ssr: false }
 ═══════════════════════════════════════════════════════════════ */
 export default function RubyReward() {
-  const [rubies,  setRubies]  = useState<FlyingRuby[]>([]);
-  const [target,  setTarget]  = useState({ x: 0, y: 0 });
+  const [rubies,   setRubies]   = useState<FlyingRuby[]>([]);
+  const [target,   setTarget]   = useState({ x: 0, y: 0 });
+  const [sparkles, setSparkles] = useState<Sparkle[]>([]);
 
   /* Handle incoming reward events */
   const handleReward = useCallback((e: Event) => {
@@ -260,6 +300,28 @@ export default function RubyReward() {
         };
       }),
     ]);
+
+    /* Spawn sparkle particles around each ruby spawn point */
+    const newSparkles: Sparkle[] = [];
+    for (let i = 0; i < Math.min(count * 6, 36); i++) {
+      const spawn = randomSpawn();
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 30 + Math.random() * 60;
+      newSparkles.push({
+        id:   `sp-${now}-${i}`,
+        x:    spawn.x,
+        y:    spawn.y,
+        dx:   Math.cos(angle) * dist,
+        dy:   Math.sin(angle) * dist,
+        size: 4 + Math.random() * 6,
+        hue:  Math.random() < 0.5 ? 5 : 42, // ruby red or gold
+      });
+    }
+    setSparkles(prev => [...prev, ...newSparkles]);
+    /* Remove sparkles after animation ends */
+    setTimeout(() => {
+      setSparkles(prev => prev.filter(s => !newSparkles.find(ns => ns.id === s.id)));
+    }, 1000);
   }, []);
 
   useEffect(() => {
@@ -273,9 +335,11 @@ export default function RubyReward() {
   }, []);
 
   /* Don't mount the Canvas at all when idle → zero GPU cost */
-  if (rubies.length === 0) return null;
+  if (rubies.length === 0 && sparkles.length === 0) return null;
 
   return (
+    <>
+    <SparkleLayer sparkles={sparkles}/>
     <div
       aria-hidden="true"
       style={{
@@ -300,5 +364,6 @@ export default function RubyReward() {
         />
       </Canvas>
     </div>
+    </>
   );
 }

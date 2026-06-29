@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bot, Sparkles, BookOpen, Target, Clock, Trophy,
   ChevronDown, ChevronUp, Zap, Calendar, Brain, Star,
   Pin, PinOff, Send, MessageCircle, X, User,
   AlertTriangle, TrendingUp, BarChart2, Lightbulb, CheckCircle,
+  Mic, MicOff, Volume2, VolumeX,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -160,6 +161,7 @@ export default function AICoachPage() {
   /* plan form */
   const [form, setForm] = useState({ course:"", year:"", subjects:"", weakSubjects:"", strongSubjects:"", examDate:"", studyHours:"6" });
   const [loading,  setLoading]  = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
   const [result,   setResult]   = useState<AIStudyPlan | null>(null);
   const [planErr,  setPlanErr]  = useState("");
   const [pinned,   setPinned]   = useState(false);
@@ -172,9 +174,45 @@ export default function AICoachPage() {
   const [chatLoading,setChatLoading]= useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  /* voice */
+  const [voiceEnabled,  setVoiceEnabled]  = useState(false);
+  const [isListening,   setIsListening]   = useState(false);
+  const [isSpeaking,    setIsSpeaking]    = useState(false);
+  const [voiceLang,     setVoiceLang]     = useState("en-US");
+  const [liveTranscript,setLiveTranscript]= useState("");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef  = useRef<any>(null);
+  const utteranceRef    = useRef<SpeechSynthesisUtterance | null>(null);
+
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) =>
       setForm(f=>({...f,[k]:e.target.value}));
+
+  /* ── Auto-fill form from saved profile + subject library ── */
+  useEffect(() => {
+    if (prefilled) return;
+    (async () => {
+      try {
+        const [profileRes, subjectsRes] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/subjects"),
+        ]);
+        const profile = profileRes.ok ? await profileRes.json() : null;
+        const subs    = subjectsRes.ok ? await subjectsRes.json() : [];
+
+        setForm(f => ({
+          ...f,
+          course:     f.course     || profile?.department || profile?.college || "",
+          year:       f.year       || profile?.academicYear || "",
+          subjects:   f.subjects   || (Array.isArray(subs) && subs.length > 0
+            ? subs.map((s: { name: string }) => s.name).join(", ")
+            : ""),
+          studyHours: f.studyHours || String(profile?.preferredStudyHours ?? 6),
+        }));
+        setPrefilled(true);
+      } catch { /* fail silently — form still works without prefill */ }
+    })();
+  }, [prefilled]);
 
   /* unique subject list for colour mapping */
   const allSubjects = form.subjects.split(",").map(s=>s.trim()).filter(Boolean);
@@ -206,17 +244,17 @@ export default function AICoachPage() {
     finally { setPinSaving(false); }
   }
 
-  /* ── Chat send ──────────────────────────────────────────── */
-  async function handleChatSend() {
-    const text = chatInput.trim();
+  /* ── Chat send (accepts optional voice transcript) ─────── */
+  async function handleChatSend(voiceText?: string) {
+    const text = (voiceText ?? chatInput).trim();
     if (!text || chatLoading) return;
-    setChatInput("");
+    if (!voiceText) setChatInput("");
+    setLiveTranscript("");
 
     const newMsgs: ChatMsg[] = [...chatMsgs, { role:"user", content:text }];
     setChatMsgs(newMsgs);
     setChatLoading(true);
 
-    // Add empty assistant slot for streaming
     setChatMsgs(prev => [...prev, { role:"assistant", content:"" }]);
 
     try {
@@ -238,12 +276,75 @@ export default function AICoachPage() {
         content += decoder.decode(value, { stream: true });
         setChatMsgs(prev => [...prev.slice(0,-1), { role:"assistant", content }]);
       }
+
+      /* Speak AI response if voice mode is on */
+      if (voiceEnabled && content) speakText(content);
+
     } catch {
       setChatMsgs(prev => [...prev.slice(0,-1), { role:"assistant", content:"Something went wrong. Please try again." }]);
     } finally {
       setChatLoading(false);
       setTimeout(()=>chatEndRef.current?.scrollIntoView({ behavior:"smooth" }), 50);
     }
+  }
+
+  /* ── Voice: start listening ─────────────────────────────── */
+  function startListening() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) { toast.error("Voice input not supported in this browser. Try Chrome or Edge."); return; }
+
+    stopSpeaking();
+    const rec = new SR();
+    rec.lang           = voiceLang;
+    rec.continuous     = false;
+    rec.interimResults = true;
+
+    rec.onstart  = () => { setIsListening(true); setLiveTranscript(""); };
+    rec.onend    = () => { setIsListening(false); };
+    rec.onerror  = () => { setIsListening(false); setLiveTranscript(""); };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join(" ");
+      setLiveTranscript(transcript);
+      if (e.results[e.results.length - 1].isFinal) {
+        setLiveTranscript("");
+        handleChatSend(transcript);
+      }
+    };
+
+    rec.start();
+    recognitionRef.current = rec;
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+    setLiveTranscript("");
+  }
+
+  /* ── Voice: speak AI response ───────────────────────────── */
+  function speakText(text: string) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const clean = text.replace(/[*_`#]/g, "").trim();
+    const utt   = new SpeechSynthesisUtterance(clean);
+    utt.lang    = voiceLang;
+    utt.rate    = 0.95;
+    utt.pitch   = 1;
+    utt.onstart = () => setIsSpeaking(true);
+    utt.onend   = () => setIsSpeaking(false);
+    utt.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utt);
+    utteranceRef.current = utt;
+  }
+
+  function stopSpeaking() {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
   }
 
   /* ── Render ─────────────────────────────────────────────── */
@@ -545,18 +646,86 @@ export default function AICoachPage() {
               boxShadow:"0 24px 80px rgba(0,0,0,0.6)", display:"flex", flexDirection:"column", zIndex:50 }}>
 
             {/* Chat header */}
-            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ width:32, height:32, borderRadius:10, background:"linear-gradient(135deg,#9B5DE5,#4895EF)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <Bot size={16} color="#fff"/>
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 14px", borderBottom:"1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ width:30, height:30, borderRadius:9, background:"linear-gradient(135deg,#9B5DE5,#4895EF)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Bot size={15} color="#fff"/>
               </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontWeight:700, color:"#fff", fontSize:"0.875rem", lineHeight:1.2 }}>Study Buddy</p>
-                <p style={{ fontSize:"0.6875rem", color:"rgba(255,255,255,0.35)" }}>Ask me anything about your subjects</p>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontWeight:700, color:"#fff", fontSize:"0.875rem", lineHeight:1.2 }}>Study Buddy {voiceEnabled && <span style={{ fontSize:"0.5625rem", background:"rgba(230,57,70,0.2)", color:"#E63946", padding:"1px 5px", borderRadius:99, marginLeft:4 }}>VOICE ON</span>}</p>
+                <p style={{ fontSize:"0.625rem", color:"rgba(255,255,255,0.3)" }}>
+                  {isSpeaking ? "🔊 Speaking…" : isListening ? "🎙 Listening…" : "Ask me anything"}
+                </p>
               </div>
-              <button onClick={()=>setChatOpen(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.4)", padding:4 }}>
-                <X size={16}/>
+              {/* Voice toggle */}
+              <button onClick={()=>{ if(voiceEnabled){ stopListening(); stopSpeaking(); } setVoiceEnabled(v=>!v); }}
+                title={voiceEnabled ? "Disable voice" : "Enable voice"}
+                style={{ width:28, height:28, borderRadius:7, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center",
+                  background: voiceEnabled ? "rgba(230,57,70,0.2)" : "rgba(255,255,255,0.07)" }}>
+                {voiceEnabled ? <Volume2 size={13} color="#E63946"/> : <VolumeX size={13} color="rgba(255,255,255,0.4)"/>}
+              </button>
+              {/* Stop speaking */}
+              {isSpeaking && (
+                <button onClick={stopSpeaking} title="Stop speaking"
+                  style={{ width:28, height:28, borderRadius:7, border:"none", cursor:"pointer", background:"rgba(230,57,70,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <VolumeX size={13} color="#E63946"/>
+                </button>
+              )}
+              {/* Language select */}
+              {voiceEnabled && (
+                <select value={voiceLang} onChange={e=>setVoiceLang(e.target.value)}
+                  style={{ fontSize:"0.5625rem", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", color:"rgba(255,255,255,0.6)", borderRadius:6, padding:"2px 4px", outline:"none" }}>
+                  <option value="en-US">EN-US</option>
+                  <option value="en-GB">EN-GB</option>
+                  <option value="hi-IN">हिंदी</option>
+                  <option value="ta-IN">தமிழ்</option>
+                  <option value="te-IN">తెలుగు</option>
+                </select>
+              )}
+              <button onClick={()=>{ setChatOpen(false); stopListening(); stopSpeaking(); }}
+                style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.4)", padding:4, flexShrink:0 }}>
+                <X size={15}/>
               </button>
             </div>
+
+            {/* Listening waveform overlay */}
+            {isListening && (
+              <div style={{ padding:"8px 14px", background:"rgba(230,57,70,0.06)", borderBottom:"1px solid rgba(230,57,70,0.15)", display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:2 }}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                    <motion.div key={i}
+                      animate={{ height:[3, 14, 3], opacity:[0.4, 1, 0.4] }}
+                      transition={{ duration:0.5+i*0.05, repeat:Infinity, delay:i*0.04 }}
+                      style={{ width:3, background:"#E63946", borderRadius:2 }}
+                    />
+                  ))}
+                </div>
+                <p style={{ fontSize:"0.75rem", color:"#E63946", flex:1 }}>
+                  {liveTranscript || "Listening… speak now"}
+                </p>
+                <button onClick={stopListening} style={{ background:"none", border:"none", cursor:"pointer", color:"rgba(230,57,70,0.7)" }}>
+                  <MicOff size={13}/>
+                </button>
+              </div>
+            )}
+
+            {/* Speaking indicator */}
+            {isSpeaking && !isListening && (
+              <div style={{ padding:"6px 14px", background:"rgba(155,93,229,0.07)", borderBottom:"1px solid rgba(155,93,229,0.15)", display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ display:"flex", gap:2 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <motion.div key={i}
+                      animate={{ height:[2,10,2] }}
+                      transition={{ duration:0.4, repeat:Infinity, delay:i*0.07 }}
+                      style={{ width:3, background:"#9B5DE5", borderRadius:2 }}
+                    />
+                  ))}
+                </div>
+                <p style={{ fontSize:"0.6875rem", color:"#9B5DE5" }}>Study Buddy is speaking…</p>
+                <button onClick={stopSpeaking} style={{ marginLeft:"auto", background:"none", border:"none", cursor:"pointer", color:"rgba(155,93,229,0.7)", fontSize:"0.625rem" }}>
+                  Stop
+                </button>
+              </div>
+            )}
 
             {/* Messages */}
             <div style={{ flex:1, overflowY:"auto", padding:"14px 14px 8px", display:"flex", flexDirection:"column", gap:12 }}>
@@ -564,27 +733,46 @@ export default function AICoachPage() {
                 <div style={{ textAlign:"center", padding:"20px 16px" }}>
                   <Bot size={32} color="rgba(155,93,229,0.5)" style={{ margin:"0 auto 12px" }}/>
                   <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"0.875rem", lineHeight:1.6 }}>
-                    Hi {user?.name?.split(" ")[0] ?? "there"}! 👋 Ask me anything about your subjects, exam tips, or study strategies.
+                    Hi {user?.name?.split(" ")[0] ?? "there"}! 👋 Ask me anything — or tap 🎙 to speak.
                   </p>
+                  {voiceEnabled && (
+                    <p style={{ color:"rgba(155,93,229,0.6)", fontSize:"0.75rem", marginTop:8 }}>
+                      Voice mode is ON — I&apos;ll speak my answers aloud.
+                    </p>
+                  )}
                 </div>
               )}
               {chatMsgs.map((m, i) => <Bubble key={i} role={m.role} content={m.content}/>)}
               <div ref={chatEndRef}/>
             </div>
 
-            {/* Input */}
-            <div style={{ padding:"10px 12px", borderTop:"1px solid rgba(255,255,255,0.07)", display:"flex", gap:8 }}>
+            {/* Input row with mic button */}
+            <div style={{ padding:"10px 12px", borderTop:"1px solid rgba(255,255,255,0.07)", display:"flex", gap:6 }}>
               <input
                 value={chatInput}
                 onChange={e=>setChatInput(e.target.value)}
                 onKeyDown={e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); handleChatSend(); } }}
-                placeholder="Ask your Study Buddy…"
+                placeholder={isListening ? "Listening…" : "Ask your Study Buddy…"}
+                disabled={isListening}
                 style={{ flex:1, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, padding:"9px 13px", color:"#fff", fontSize:"0.875rem", outline:"none" }}
               />
-              <button onClick={handleChatSend} disabled={chatLoading || !chatInput.trim()}
-                style={{ width:38, height:38, borderRadius:10, background: chatLoading||!chatInput.trim() ? "rgba(155,93,229,0.2)" : "linear-gradient(135deg,#9B5DE5,#4895EF)",
-                  border:"none", cursor: chatLoading||!chatInput.trim() ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <Send size={15} color="#fff"/>
+              {/* Mic button */}
+              <button
+                onClick={isListening ? stopListening : startListening}
+                title={isListening ? "Stop listening" : "Start voice input"}
+                style={{ width:36, height:36, borderRadius:10, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+                  background: isListening ? "#E63946" : "rgba(230,57,70,0.15)",
+                  transition:"all 0.2s" }}>
+                {isListening
+                  ? <motion.div animate={{ scale:[1,1.2,1] }} transition={{ duration:0.6, repeat:Infinity }}><MicOff size={14} color="#fff"/></motion.div>
+                  : <Mic size={14} color="#E63946"/>}
+              </button>
+              {/* Send button */}
+              <button onClick={() => handleChatSend()} disabled={chatLoading || (!chatInput.trim() && !isListening)}
+                style={{ width:36, height:36, borderRadius:10, flexShrink:0,
+                  background: chatLoading || (!chatInput.trim()) ? "rgba(155,93,229,0.2)" : "linear-gradient(135deg,#9B5DE5,#4895EF)",
+                  border:"none", cursor: chatLoading || !chatInput.trim() ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <Send size={14} color="#fff"/>
               </button>
             </div>
           </motion.div>

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Trophy, Medal, Target, BarChart2,
   User, Settings, X, Gem, Flame, ChevronRight, LogOut, Bot, Library,
-  Activity, GraduationCap, Layers,
+  Activity, GraduationCap, Layers, FileText, Rocket, CalendarDays, TrendingUp,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -46,6 +46,15 @@ const NAV_SECTIONS = [
       { href:"/progress",    label:"Study Heatmap",       icon:<Activity      size={16}/> },
       { href:"/exams",       label:"Exam Performance",    icon:<GraduationCap size={16}/> },
       { href:"/challenges",  label:"Test Generator",      icon:<Target        size={16}/> },
+    ],
+  },
+  {
+    label:"Tools",
+    items:[
+      { href:"/study-assistant", label:"PDF Assistant",   icon:<FileText size={16}/> },
+      { href:"/career",          label:"Career Roadmap",  icon:<Rocket size={16}/> },
+      { href:"/calendar",        label:"Study Calendar",  icon:<CalendarDays size={16}/> },
+      { href:"/weekly-report",   label:"Weekly Report",   icon:<TrendingUp size={16}/> },
     ],
   },
   {
